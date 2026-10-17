@@ -10,12 +10,10 @@
 - FastAPI service with SymPy for symbolic verification of free-form answers
 - KaTeX rendering and richer working-step capture
 - Server-side Gemini calls so no API key lives in the browser
-- More tracks: first-year CSE, NEET Chemistry, JEE Maths calculus and algebra
+- More tracks: more first-year CSE (programming basics), NEET Chemistry, JEE Maths algebra and coordinate geometry
 - Calibrate BKT parameters from real response data
-- Playwright end-to-end suite in CI
+- Run the Playwright suite in CI, add Firefox and WebKit projects
 
 ## Known gaps in the prototype (carried from PROGRESS)
-- First-year CSE track (number systems, basic programming) is not authored yet
-- Automated browser interaction tests
 - Better edge routing in the graph for long dependencies
 - Verify the Gemini path against the live API behind a server-side proxy

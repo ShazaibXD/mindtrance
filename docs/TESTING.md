@@ -1,10 +1,11 @@
 # Testing
 
 ```bash
-npm test        # node --test tests/*.test.js
+npm test             # unit and smoke tests: node --test tests/*.test.js (127 tests, no install)
+npm run test:e2e     # Playwright browser tests (36 tests)
 ```
 
-Requires Node 20 or newer. There are no dependencies to install.
+Unit tests need Node 20 or newer and nothing else. The e2e suite needs `npm install` once and uses the Google Chrome already on the machine (`channel: 'chrome'`), so no browser is downloaded. To use Playwright's own Chromium instead: `npx playwright install chromium` then `E2E_CHANNEL=chromium npm run test:e2e`. The suite starts its own dependency-free static server on port 4174.
 
 ## What is covered
 
@@ -23,11 +24,22 @@ Requires Node 20 or newer. There are no dependencies to install.
 | `analytics`, `ui-util`, `graphview` | Pure analytics, escaping and math formatting, graph markup, accessibility attributes |
 | `smoke` | Headless Chrome loads `index.html` from `file://`: landing, graph, six domains, route guard, not-found |
 
+## End-to-end suite (`tests/e2e`)
+
+| Spec | Covers |
+| --- | --- |
+| `journey` | The acceptance scenario through real clicks: wrong attempt, diagnosis with evidence and no answer leak, failed probe, confirmed gap, blocked target, personalised lesson, practice, fresh verification, mastery update, graph update, retry, refresh persistence. Also: locked retry, failed verification returning to the lesson, slip handling with no mastery change, inline rejection of unreadable answers |
+| `map` | Node selection, dependency highlighting, zoom and fit, drag to pan without selecting, keyboard selection, recovery from the map, table alternative, switching topic |
+| `app` | Route guard and sign-up validation, sign out and back in, markup in names shown as text, honest empty states, settings (rename, theme persistence, confirmed reset), export excludes the API key, explorer filter |
+| `tracks` | For all 7 tracks: a typical wrong answer produces the expected hypothesis and probe, and the correct answer is accepted |
+| `mobile` | 375px width: no horizontal overflow on any page, navigation drawer, the loop works with touch |
+
+The generated verification answer is read from app state (`MT.flow.verificationProblem`), because a test cannot guess random numbers. Everything else is done through the UI.
+
 ## What is not covered
 
-- No automated DOM interaction tests (clicking through the workspace). The full journey was exercised by hand in a browser during development, and the logic behind it is covered by the `flow` suite. A Playwright suite is on the roadmap.
 - The Gemini integration has only been tested against mocked responses, never the live API.
 - Accessibility has had a keyboard and semantics pass but no automated audit and no screen reader test.
-- No cross-browser testing beyond Chrome.
+- No cross-browser testing beyond Chrome. The Playwright config can be extended with Firefox and WebKit projects.
 
 Real external services are never required to run the tests.

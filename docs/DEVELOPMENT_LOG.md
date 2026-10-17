@@ -17,6 +17,12 @@
 - Browser caching served a stale script during testing. Documented in the README troubleshooting section.
 - Test off-by-one mistakes (escalation count, sliding window) were test errors, not code errors; the intended behaviour is documented in the tests.
 
+## Second pass: CSE track and end-to-end tests
+
+- Added a first-year CSE track on two's complement. Binary answers are stored as numbers like `11110011` so the existing numeric checker and exact matching work with no engine change. Wrong-answer signatures cover one's complement (forgot +1), sign-magnitude, no inversion and reversed remainders. A palindromic example (45 = 101101) was avoided on purpose because reversal would not be distinguishable.
+- Added a Playwright suite (36 tests) that drives the installed Chrome, so no browser download. It uses a tiny Node static server rather than depending on Python. Tests found two selector ambiguities in the suite itself and no application bugs.
+- Generated verification answers are read from app state in the tests because they are random; everything else goes through the UI.
+
 ## Not done
 
-Playwright suite, real auth, database, live Gemini verification, KaTeX, first-year CSE track. See `docs/ROADMAP.md`.
+Real auth, database, live Gemini verification, KaTeX, cross-browser runs. See `docs/ROADMAP.md`.

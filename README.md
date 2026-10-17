@@ -27,7 +27,7 @@ Then click **Judge demo** on the landing page for a guided run of the whole loop
 - **Knowledge gap map.** Interactive SVG graph: pan, zoom, fit, dependency highlighting, concept panel, recovery action, keyboard support, and a table alternative.
 - **Progress analytics.** Mastery over time, attempts, correctness trend, recovery success, repeated misconceptions, weakest concepts.
 - **Safe parsing.** Numbers, units and algebraic expressions are parsed by a hand-written parser (no `eval`) and compared numerically.
-- **Six tracks** across JEE Physics, JEE Chemistry, JEE Mathematics, NEET Biology, GATE CS and first-year EEE, defined as data.
+- **Seven tracks** across JEE Physics, JEE Chemistry, JEE Mathematics, NEET Biology, GATE CS and first-year engineering (EEE and CSE), defined as data.
 - **Judge demo mode**, light and dark themes, responsive layout, optional Gemini classification.
 
 ## What is real and what is not
@@ -38,7 +38,7 @@ Then click **Judge demo** on the landing page for a guided run of the whole loop
 | Gemini integration | Optional, bring your own key in Settings. Schema-validated and unit-tested with mocked responses. **Not exercised against the live API.** |
 | Accounts | Local profiles in `localStorage`, no password. **Not real authentication.** |
 | Database | None. Data lives in the browser. A Supabase schema is proposed in `docs/DATABASE.md` but not implemented. |
-| Content | 6 hand-authored tracks (33 concepts, 7 original problems, 12 fresh-problem generators). A seed for the format, not a syllabus. |
+| Content | 7 hand-authored tracks (39 concepts, 8 original problems, 14 fresh-problem generators). A seed for the format, not a syllabus. |
 | Mastery values | Transparent estimates with uncalibrated parameters. Not grades. |
 
 ## Deviations from the original brief
@@ -47,12 +47,12 @@ The original brief specified Next.js, FastAPI, SymPy, KaTeX, React Flow and Supa
 
 ## Technology
 
-Vanilla JavaScript (classic scripts, so `file://` works), SVG for the graph and charts, `localStorage` for persistence, Node's built-in test runner for tests. Fonts (Inter, Fraunces, JetBrains Mono) load from Google Fonts and fall back to system fonts offline.
+Vanilla JavaScript (classic scripts, so `file://` works), SVG for the graph and charts, `localStorage` for persistence, Node's built-in test runner for unit tests and Playwright for end-to-end tests. Fonts (Inter, Fraunces, JetBrains Mono) load from Google Fonts and fall back to system fonts offline.
 
 ## Prerequisites
 
 - A current browser.
-- Node 20 or newer, only to run tests.
+- Node 20 or newer, only to run tests. End-to-end tests also need Google Chrome (or `npx playwright install chromium`).
 - Python 3 only if you want `npm run serve`.
 
 ## Environment configuration
@@ -62,10 +62,12 @@ There are no required environment variables and no `.env` files. The optional Ge
 ## Running tests
 
 ```bash
-npm test
+npm test               # 127 unit and smoke tests, no install needed
+npm install            # once, for Playwright
+npm run test:e2e       # 36 browser tests driving the real UI
 ```
 
-122 tests across the engine, content, state machine, store, flow, analytics, UI helpers, graph rendering and three headless-Chrome smoke tests (skipped automatically when Chrome is not installed; set `CHROME_BIN` to point at a browser). See `docs/TESTING.md`.
+The unit suite covers the engine, content, state machine, store, flow, analytics, UI helpers, graph rendering and three headless-Chrome smoke tests (skipped when Chrome is not installed; set `CHROME_BIN` to point at a browser). The e2e suite clicks through the whole student journey. See `docs/TESTING.md`.
 
 ## Demo mode
 
@@ -88,7 +90,7 @@ js/store.js         profiles, mastery, events, sessions (localStorage)
 js/flow.js          attempt, probe, recovery and verification orchestration
 js/analytics.js     progress calculations
 js/ui/              router, shell, graph view, charts, stage panels, pages/
-tests/              node:test suites
+tests/              node:test suites; tests/e2e has the Playwright specs
 docs/               architecture, API, database, testing, deployment, progress, roadmap
 ```
 
@@ -103,6 +105,7 @@ Create a file in `js/data/` that calls `MT.data.register({...})` with concepts, 
 - **Fonts look different offline:** the system font stack is used as a fallback.
 - **Gemini says the key was rejected:** check the key and that it is allowed to call the Generative Language API. The rule-based result is always used as the fallback.
 - **Smoke tests skipped:** install Chrome or set `CHROME_BIN`.
+- **e2e cannot launch Chrome:** run `npx playwright install chromium` and then `E2E_CHANNEL=chromium npm run test:e2e`.
 
 ## Deployment
 
