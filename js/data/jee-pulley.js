@@ -104,7 +104,7 @@
         patterns: [
           { value: 10, cat: 'PREREQUISITE_GAP', concept: 'fbd_tension', evidence: 'The result 10 m/s^2 is free fall: the string tension was ignored, as if T = 0.' },
           { value: 3.33, cat: 'PREREQUISITE_GAP', concept: 'moment_inertia', evidence: 'The result 3.33 m/s^2 follows from I = M R^2: the disc was treated as a hoop.' },
-          { value: 8.33, cat: 'PREREQUISITE_GAP', concept: 'constraint', evidence: 'The result 8.33 m/s^2 follows from using α = a without the radius.' },
+          { value: 8.33, cat: 'PROCEDURAL_ERROR', concept: 'constraint', evidence: 'The result 8.33 m/s^2 follows from using α = a without the radius.' },
         ],
         keywords: [
           { re: /I\s*=\s*M\s*R\s*(\^\s*2|²|2)(?!\s*\/\s*2)/i, cat: 'PREREQUISITE_GAP', concept: 'moment_inertia', evidence: 'The working uses I = M R^2, which is the moment of inertia of a hoop, not a solid disc.' },
@@ -131,7 +131,7 @@
           patterns: [
             { value: 10, cat: 'PREREQUISITE_GAP', concept: 'fbd_tension', evidence: 'Free fall: tension ignored.' },
             { value: sig(10 * m / (m + M)), cat: 'PREREQUISITE_GAP', concept: 'moment_inertia', evidence: 'The winch was treated as a hoop.' },
-            { value: sig(10 * m / (m + 0.5 * M * R)), cat: 'PREREQUISITE_GAP', concept: 'constraint', evidence: 'The radius was dropped from a = α R.' },
+            { value: sig(10 * m / (m + 0.5 * M * R)), cat: 'PROCEDURAL_ERROR', concept: 'constraint', evidence: 'The radius was dropped from a = α R.' },
           ],
           keywords: [],
         });
@@ -154,7 +154,7 @@
           patterns: [
             { value: m * 10, cat: 'PREREQUISITE_GAP', concept: 'fbd_tension', evidence: 'The result is m g: tension was assumed equal to the weight.' },
             { value: sig(M * (10 * m / (m + M))), cat: 'PREREQUISITE_GAP', concept: 'moment_inertia', evidence: 'The drum was treated as a hoop.' },
-            { value: sig(0.5 * M * R * aHalf), cat: 'PREREQUISITE_GAP', concept: 'constraint', evidence: 'The radius was dropped from a = α R.' },
+            { value: sig(0.5 * M * R * aHalf), cat: 'PROCEDURAL_ERROR', concept: 'constraint', evidence: 'The radius was dropped from a = α R.' },
           ],
           keywords: [],
         });

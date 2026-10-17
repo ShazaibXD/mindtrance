@@ -129,7 +129,7 @@
         if (!r.ok) { ui.wsError = r.error; ui.focusAfter = '#a-ans'; ui.render(); return; }
         judgement = r.value;
       }
-    } else if (cfg.useGemini && cfg.geminiKey && pre.matchedBy === 'fallback' && pre.category !== 'CORRECT') {
+    } else if (cfg.useGemini && cfg.geminiKey && pre.matchedBy === 'fallback' && pre.category !== 'CORRECT_UNDERSTANDING') {
       ui.busy = true; ui.render();
       const r = await MT.ai.classify({ apiKey: cfg.geminiKey }, ctx.track, problem, answer, working);
       ui.busy = false;

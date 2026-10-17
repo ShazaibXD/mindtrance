@@ -1,16 +1,57 @@
 /* Rule-based diagnostic engine. Deterministic: no language model involved.
- * Confidence values are heuristic strengths of evidence, not calibrated probabilities. */
+ * Evidence strength is a transparent composite of weighted evidence items, not a calibrated probability. */
 (function (g) {
   'use strict';
   const MT = (g.MT = g.MT || {});
 
-  const CATEGORIES = {
-    CORRECT: { label: 'Correct', blurb: 'The answer matches the verified result.' },
-    CARELESS_SLIP: { label: 'Careless slip', blurb: 'The method looks right; a late arithmetic or copying step went wrong. Mastery is not lowered.' },
-    UNIT_ERROR: { label: 'Unit error', blurb: 'A unit or prefix was mishandled. This points at unit conversion, not the main concept.' },
-    PREREQUISITE_GAP: { label: 'Suspected prerequisite gap', blurb: 'The error pattern points at an upstream concept that the problem depends on.' },
-    CONCEPT_MISCONCEPTION: { label: 'Concept misconception', blurb: 'The error pattern points at the target concept itself.' },
+  /* The canonical outcome taxonomy. `kind` drives the action policy, not the label:
+   *   correct | unverified | gap (needs a lesson) | slip (retry, no mastery change) | partial | language | ambiguous (probe) */
+  const OUTCOMES = {
+    CORRECT_UNDERSTANDING: { label: 'Correct understanding', kind: 'correct', blurb: 'The answer and the reasoning check out.' },
+    CORRECT_ANSWER_UNVERIFIED_REASONING: { label: 'Right answer, reasoning not checked yet', kind: 'unverified', blurb: 'The answer is right, but a right answer alone does not show the idea behind it.' },
+    CONCEPTUAL_GAP: { label: 'Conceptual gap', kind: 'gap', recovery: 'full', blurb: 'The error points at the core idea of the target concept itself.' },
+    PREREQUISITE_GAP: { label: 'Prerequisite gap', kind: 'gap', recovery: 'full', blurb: 'The setup looks fine; the error points at an upstream concept the problem depends on.' },
+    PROCEDURAL_ERROR: { label: 'Procedural error', kind: 'gap', recovery: 'procedural', blurb: 'The right idea and rule were chosen, but a step was applied in the wrong way.' },
+    CALCULATION_OR_UNIT_ERROR: { label: 'Calculation or unit slip', kind: 'slip', blurb: 'The setup is sound; an arithmetic step or a unit changed the result. Mastery is not lowered.' },
+    READING_OR_INTERPRETATION_ERROR: { label: 'Reading or interpretation slip', kind: 'slip', blurb: 'The work answers a slightly different question than the one asked. Mastery is not lowered.' },
+    LANGUAGE_COMPREHENSION_DIFFICULTY: { label: 'Language difficulty', kind: 'language', blurb: 'The wording of the question seems to be the obstacle rather than the subject.' },
+    PARTIAL_UNDERSTANDING: { label: 'Partial understanding', kind: 'partial', blurb: 'Part of the idea is there; a secondary part is missing.' },
+    POSSIBLE_CARELESS_SLIP: { label: 'Possible slip', kind: 'slip', blurb: 'This looks out of character for what you have shown before. Mastery is not lowered.' },
+    AMBIGUOUS_OR_INSUFFICIENT_EVIDENCE: { label: 'Not enough evidence yet', kind: 'ambiguous', blurb: 'More than one explanation fits, so one short question comes before any diagnosis.' },
   };
+  const CATEGORIES = OUTCOMES; // original name, still used by the UI
+
+  const kindOf = (outcome) => (OUTCOMES[outcome] ? OUTCOMES[outcome].kind : 'other');
+  const needsCandidates = (outcome) => ['gap', 'partial', 'ambiguous'].includes(kindOf(outcome));
+
+  /* Evidence reliability weights and decision thresholds (spec section 9.1). */
+  const WEIGHTS = { DETERMINISTIC_STEPS: 0.90, WRITTEN_REASONING: 0.85, PROBE_RESPONSE: 0.75, HISTORY: 0.70, BARE_ANSWER: 0.35, AI_JUDGEMENT: 0.60, RUBRIC: 0.50 };
+  const THRESHOLDS = { insufficient: 0.45, confirmed: 0.75 };
+  const SOURCE_LABEL = {
+    DETERMINISTIC_STEPS: 'Checked step in your working', WRITTEN_REASONING: 'Your written reasoning', PROBE_RESPONSE: 'Answer to a targeted question',
+    HISTORY: 'Repeated pattern in your history', BARE_ANSWER: 'Final answer only', AI_JUDGEMENT: 'AI reading of your answer', RUBRIC: 'Demo rubric (keyword rules)',
+  };
+
+  /* S_E = 1 - product(1 - w_i * r_i). r_i is how well item i points at the hypothesis. */
+  function compositeEvidence(items) {
+    return 1 - items.reduce((p, it) => p * (1 - Math.min(1, Math.max(0, it.w * it.r))), 1);
+  }
+  const tierOf = (score) => (score >= THRESHOLDS.confirmed ? 'CONFIRMED' : score >= THRESHOLDS.insufficient ? 'SUSPECTED' : 'INSUFFICIENT');
+  const ev = (source, r, note) => ({ source, w: WEIGHTS[source], r, note: note || '' });
+
+  function withEvidence(res, items) {
+    res.evidenceItems = items;
+    res.evidenceScore = compositeEvidence(items);
+    res.tier = tierOf(res.evidenceScore);
+    res.confidence = res.evidenceScore;
+    return res;
+  }
+
+  /* While evidence is below the threshold, a gap hypothesis is shown as "not enough evidence yet". */
+  function effectiveOutcome(res) {
+    if (['gap', 'partial'].includes(kindOf(res.category)) && res.tier === 'INSUFFICIENT') return 'AMBIGUOUS_OR_INSUFFICIENT_EVIDENCE';
+    return res.category;
+  }
 
   const slipConcept = (track) => (track.concepts.some((c) => c.id === 'unit_conv') ? 'unit_conv' : null);
 
@@ -70,27 +111,32 @@
     return null;
   }
 
-  function classify(track, problem, answerText, workingText) {
+  function classify(track, problem, answerText, workingText, ctx) {
+    const c = ctx || {};
     const chk = checkAnswer(problem, String(answerText || ''));
     const working = String(workingText || '');
     const base = { engine: 'rule-based', category: null, confidence: 0, evidence: [], hintConcept: null, matchedBy: null };
+    const slipOutcome = () => (c.mastery && c.mastery[track.target] > 0.8 ? 'POSSIBLE_CARELESS_SLIP' : 'CALCULATION_OR_UNIT_ERROR');
+    const history = (concept) => (concept && c.priorGaps && c.priorGaps[concept] >= 2 ? [ev('HISTORY', 1, 'The same concept was implicated in earlier attempts.')] : []);
     if (!chk.ok) return Object.assign(base, { category: 'INVALID_INPUT', reason: chk.reason });
     if (chk.open) {
       // Open-ended answers have no deterministic checker: the caller must supply a judgement (AI or demo rubric).
-      return Object.assign(base, { category: 'PREREQUISITE_GAP', confidence: 0, matchedBy: 'fallback', needsJudge: true, evidence: ['This open-ended answer needs a judgement before it can be diagnosed.'] });
+      return withEvidence(Object.assign(base, { category: 'AMBIGUOUS_OR_INSUFFICIENT_EVIDENCE', matchedBy: 'fallback', needsJudge: true, evidence: ['This open-ended answer needs a judgement before it can be diagnosed.'] }), []);
     }
-    if (chk.correct) return Object.assign(base, { category: 'CORRECT', confidence: 1, matchedBy: 'verified', evidence: ['The answer was checked against the verified result by deterministic comparison.'] });
+    if (chk.correct) {
+      return withEvidence(Object.assign(base, { category: 'CORRECT_UNDERSTANDING', matchedBy: 'verified', evidence: ['The answer was checked against the verified result by deterministic comparison.'] }), [ev('DETERMINISTIC_STEPS', 1, 'Deterministic comparison with the verified result.')]);
+    }
     if (problem.answer.kind === 'choice') {
-      return Object.assign(base, {
-        category: 'PREREQUISITE_GAP', confidence: 0.7, matchedBy: 'choice', hintConcept: problem.concept || null,
+      return withEvidence(Object.assign(base, {
+        category: 'PREREQUISITE_GAP', matchedBy: 'choice', hintConcept: problem.concept || null,
         evidence: ['A wrong option was chosen on a question that tests this concept.'],
-      });
+      }), [ev('PROBE_RESPONSE', 1, 'A targeted question on this concept was missed.')]);
     }
     if (chk.dimension) {
-      return Object.assign(base, {
-        category: 'UNIT_ERROR', confidence: 0.7, matchedBy: 'generic', hintConcept: slipConcept(track),
+      return withEvidence(Object.assign(base, {
+        category: 'CALCULATION_OR_UNIT_ERROR', matchedBy: 'generic', hintConcept: slipConcept(track),
         evidence: ['The unit "' + chk.parsed.unit + '" does not have the dimension this question asks for.'],
-      });
+      }), [ev('DETERMINISTIC_STEPS', 0.8, 'The unit parser found a dimension mismatch.')]);
     }
 
     const keywordHits = (problem.keywords || []).filter((k) => k.re.test(working));
@@ -98,52 +144,53 @@
     if (sig) {
       const agree = keywordHits.find((k) => k.concept && k.concept === sig.concept);
       const evidence = [sig.evidence];
-      if (agree) evidence.push(agree.evidence);
+      const items = [ev('BARE_ANSWER', 1, 'The final answer matches a known wrong-answer pattern.')];
+      if (agree) { evidence.push(agree.evidence); items.push(ev('DETERMINISTIC_STEPS', 1, 'A step in your working shows the same error.')); }
+      else if (working.trim().length >= 10) items.push(ev('WRITTEN_REASONING', 0.3, 'Working was shown, but no step confirms the hypothesis by itself.'));
+      items.push(...history(sig.concept));
       let category = sig.cat;
-      if (sig.concept && sig.concept === track.target && category === 'PREREQUISITE_GAP') category = 'CONCEPT_MISCONCEPTION';
-      return Object.assign(base, {
-        category, confidence: Math.min(0.95, 0.8 + (agree ? 0.1 : 0)), matchedBy: 'signature',
-        evidence, hintConcept: sig.concept || null,
-      });
+      if (sig.concept && sig.concept === track.target && category === 'PREREQUISITE_GAP') category = 'CONCEPTUAL_GAP';
+      return withEvidence(Object.assign(base, { category, matchedBy: 'signature', evidence, hintConcept: sig.concept || null }), items);
     }
 
     if (chk.value != null) {
       const gs = genericSlip(problem, chk.value);
       if (gs) {
-        return Object.assign(base, {
-          category: gs.kind === 'unit' ? 'UNIT_ERROR' : 'CARELESS_SLIP', confidence: 0.6, matchedBy: 'generic',
+        return withEvidence(Object.assign(base, {
+          category: gs.kind === 'unit' ? 'CALCULATION_OR_UNIT_ERROR' : slipOutcome(), matchedBy: 'generic',
           hintConcept: gs.kind === 'unit' ? slipConcept(track) : null, evidence: [gs.why],
-        });
+        }), [ev('BARE_ANSWER', 0.8, gs.why)]);
       }
     }
 
     if (keywordHits.length) {
       const k = keywordHits[0];
-      return Object.assign(base, {
-        category: k.cat, confidence: 0.65, matchedBy: 'working', hintConcept: k.concept || null,
+      return withEvidence(Object.assign(base, {
+        category: k.cat, matchedBy: 'working', hintConcept: k.concept || null,
         evidence: [k.evidence, 'The final number does not match any known error signature, so this comes from the working steps alone.'],
-      });
+      }), [ev('DETERMINISTIC_STEPS', 0.8, 'A step in your working matches a known error.'), ...history(k.concept)]);
     }
 
     const setupHit = (problem.setup || []).some((re) => re.test(working));
     if (setupHit) {
-      return Object.assign(base, {
-        category: 'CARELESS_SLIP', confidence: 0.5, matchedBy: 'setup',
+      return withEvidence(Object.assign(base, {
+        category: slipOutcome(), matchedBy: 'setup',
         evidence: ['The working shows the expected setup, but the final answer is wrong. That fits a late slip rather than a concept gap.'],
-      });
+      }), [ev('WRITTEN_REASONING', 0.6, 'The working shows a sound setup.')]);
     }
 
-    return Object.assign(base, {
-      category: 'PREREQUISITE_GAP', confidence: 0.3, matchedBy: 'fallback',
+    return withEvidence(Object.assign(base, {
+      category: 'AMBIGUOUS_OR_INSUFFICIENT_EVIDENCE', matchedBy: 'fallback',
       evidence: ['The answer does not match any known error pattern for this problem. The suspects below are ranked only from the dependency graph and your mastery history, so treat them as weak hypotheses to test.'],
-    });
+    }), [ev('BARE_ANSWER', 0.2, 'Only a final answer, with no recognisable pattern.')]);
   }
 
-  /* Full diagnosis: classification plus ranked, graph-validated candidate causes. */
-  function diagnose(track, problem, answerText, workingText, mastery) {
-    const res = classify(track, problem, answerText, workingText);
+  /* Full diagnosis: classification plus ranked, graph-validated candidate causes.
+   * ctx.priorGaps maps concept id to how often it was implicated before (cross-session history). */
+  function diagnose(track, problem, answerText, workingText, mastery, ctx) {
+    const res = classify(track, problem, answerText, workingText, Object.assign({ mastery }, ctx || {}));
     res.candidates = [];
-    if (res.category !== 'PREREQUISITE_GAP' && res.category !== 'CONCEPT_MISCONCEPTION') return res;
+    if (!needsCandidates(res.category)) return res;
     const gr = MT.graph.build(track);
     const known = (id) => id && gr.byId.has(id);
     const hints = {};
@@ -152,10 +199,10 @@
     const ranked = MT.graph.rankSuspects(gr, track.target, mastery || {}, { hints, includeTarget: true });
     const top = ranked.filter((r) => r.score > 0).slice(0, 3);
     res.candidates = top.map((r) => ({ id: r.id, score: r.score, parts: r.parts, fromEvidence: r.parts.hint > 0 }));
-    if (res.category === 'PREREQUISITE_GAP' && res.candidates.length && res.candidates[0].id === track.target) res.category = 'CONCEPT_MISCONCEPTION';
+    if (res.category === 'PREREQUISITE_GAP' && res.candidates.length && res.candidates[0].id === track.target) res.category = 'CONCEPTUAL_GAP';
     return res;
   }
 
-  MT.diagnose = { CATEGORIES, classify, diagnose, checkAnswer };
+  MT.diagnose = { CATEGORIES, OUTCOMES, WEIGHTS, THRESHOLDS, SOURCE_LABEL, kindOf, needsCandidates, compositeEvidence, tierOf, withEvidence, effectiveOutcome, classify, diagnose, checkAnswer };
   if (typeof module !== 'undefined' && module.exports) module.exports = MT.diagnose;
 })(typeof window !== 'undefined' ? window : globalThis);

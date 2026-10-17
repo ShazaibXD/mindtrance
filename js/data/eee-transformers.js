@@ -111,7 +111,7 @@
             { value: 200, cat: 'PREREQUISITE_GAP', concept: 'turns_ratio', evidence: 'The result 200 A follows from V_2 = 240 x 10 = 2400 V: the turns ratio was applied upside down.' },
             { value: 20, cat: 'PREREQUISITE_GAP', concept: 'turns_ratio', evidence: 'The result 20 A equals V_1/R_L: the transformer ratio was skipped and the primary voltage was put across the load.' },
             { value: 288, cat: 'PREREQUISITE_GAP', concept: 'ohms_law', evidence: 'The result 288 A equals V_2 x R_L: Ohm’s law was applied as I = V R.' },
-            { value: 24, cat: 'CARELESS_SLIP', concept: null, evidence: 'The result 24 matches the secondary voltage in volts, so the final step I_2 = V_2/R_L looks skipped rather than misunderstood.' },
+            { value: 24, cat: 'READING_OR_INTERPRETATION_ERROR', concept: null, evidence: 'The result 24 matches the secondary voltage in volts, so the final step I_2 = V_2/R_L looks skipped rather than misunderstood.' },
           ],
           keywords: [
             { re: /V_?2\s*=\s*V_?1\s*[x×*]\s*N_?1|[x×*]\s*10\s*=\s*2400/i, cat: 'PREREQUISITE_GAP', concept: 'turns_ratio', evidence: 'The working multiplies V_1 by the ratio the wrong way round.' },
@@ -132,7 +132,7 @@
           setup: [/2400/i, /120\s*V/i],
           unitSensitive: true,
           patterns: [
-            { value: 0.02, cat: 'UNIT_ERROR', concept: 'unit_conv', evidence: 'The result 0.02 A comes from using 2.4 instead of 2400 V: the kV prefix was dropped.' },
+            { value: 0.02, cat: 'CALCULATION_OR_UNIT_ERROR', concept: 'unit_conv', evidence: 'The result 0.02 A comes from using 2.4 instead of 2400 V: the kV prefix was dropped.' },
             { value: 400, cat: 'PREREQUISITE_GAP', concept: 'turns_ratio', evidence: 'The result 400 A equals 2400/6: the turns ratio was never applied.' },
             { value: 8000, cat: 'PREREQUISITE_GAP', concept: 'turns_ratio', evidence: 'The result 8000 A follows from stepping the voltage up to 48 kV: the ratio was inverted.' },
           ],
@@ -186,7 +186,7 @@
           solution: ['V_1 = ' + kv + ' kV = ' + V1 + ' V', 'V_2 = ' + V1 + '/' + r + ' = ' + V2 + ' V', 'I_2 = ' + V2 + '/' + RL + ' = ' + I2 + ' A'],
           setup: [], unitSensitive: true,
           patterns: [
-            { value: sig(kv / r / RL), cat: 'UNIT_ERROR', concept: 'unit_conv', evidence: 'The kV prefix was dropped.' },
+            { value: sig(kv / r / RL), cat: 'CALCULATION_OR_UNIT_ERROR', concept: 'unit_conv', evidence: 'The kV prefix was dropped.' },
             { value: sig(V1 / RL), cat: 'PREREQUISITE_GAP', concept: 'turns_ratio', evidence: 'The ratio was skipped.' },
             { value: sig(V1 * r / RL), cat: 'PREREQUISITE_GAP', concept: 'turns_ratio', evidence: 'The ratio was applied upside down.' },
           ],

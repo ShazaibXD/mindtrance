@@ -165,7 +165,7 @@
     const engine = 'demo-rubric';
     const label = 'Demo rubric (keyword rules, not AI): ';
     if (has('reparation') && has('resent', 'humiliat', 'nazi', 'hitler', 'nationalis', 'extrem', 'depression', 'inflation')) {
-      return { engine, matchedBy: 'rubric', isCorrect: true, category: 'CORRECT', confidence: 0.8, hintConcept: null, evidence: [label + 'your answer links reparations to resentment or extremist politics.'] };
+      return { engine, matchedBy: 'rubric', isCorrect: true, category: 'CORRECT_UNDERSTANDING', confidence: 0.8, hintConcept: null, evidence: [label + 'your answer links reparations to resentment or extremist politics.'] };
     }
     if (has('reparation', 'war guilt', 'article 231', 'ruhr')) {
       return { engine, matchedBy: 'rubric', isCorrect: false, category: 'PREREQUISITE_GAP', confidence: 0.55, hintConcept: 'reparations', evidence: [label + 'your answer mentions the terms but does not connect them to economic collapse and political anger.'] };

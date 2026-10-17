@@ -36,8 +36,8 @@ test('repeated misconceptions group by concept and category, most frequent first
     ev('ATTEMPT', { category: 'PREREQUISITE_GAP', conceptId: 'x', correct: false, at: 1 }),
     ev('ATTEMPT', { category: 'PREREQUISITE_GAP', conceptId: 'y', correct: false, at: 2 }),
     ev('ATTEMPT', { category: 'PREREQUISITE_GAP', conceptId: 'y', correct: false, at: 3 }),
-    ev('ATTEMPT', { category: 'CARELESS_SLIP', conceptId: null, correct: false }),
-    ev('ATTEMPT', { category: 'CORRECT', correct: true }),
+    ev('ATTEMPT', { category: 'POSSIBLE_CARELESS_SLIP', conceptId: null, correct: false }),
+    ev('ATTEMPT', { category: 'CORRECT_UNDERSTANDING', correct: true }),
   ]);
   assert.equal(rows.length, 2);
   assert.equal(rows[0].conceptId, 'y');

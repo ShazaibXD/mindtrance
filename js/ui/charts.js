@@ -21,7 +21,7 @@
     return s;
   }
 
-  const GLYPH = { CORRECT: ['✓', 'mastered', 'Correct'], CARELESS_SLIP: ['S', 'verify', 'Careless slip'], UNIT_ERROR: ['U', 'verify', 'Unit error'], PREREQUISITE_GAP: ['G', 'gap', 'Prerequisite gap'], CONCEPT_MISCONCEPTION: ['M', 'gap', 'Misconception'] };
+  const GLYPH = { CORRECT_UNDERSTANDING: ['✓', 'mastered', 'Correct'], POSSIBLE_CARELESS_SLIP: ['S', 'verify', 'Careless slip'], CALCULATION_OR_UNIT_ERROR: ['U', 'verify', 'Unit error'], PREREQUISITE_GAP: ['G', 'gap', 'Prerequisite gap'], CONCEPTUAL_GAP: ['M', 'gap', 'Misconception'] };
 
   function attemptStrip(attempts) {
     return '<ol class="strip list-reset" aria-label="Attempts in order">' + attempts.map((a, i) => {

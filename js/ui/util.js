@@ -48,7 +48,7 @@
     BLOCKED: { label: 'Blocked by prerequisite', short: 'Blocked', cls: 'blocked', glyph: '–', help: 'An upstream concept is a confirmed gap.' },
   };
 
-  const CATEGORY_CLS = { CORRECT: 'mastered', CARELESS_SLIP: 'verify', UNIT_ERROR: 'verify', PREREQUISITE_GAP: 'gap', CONCEPT_MISCONCEPTION: 'gap' };
+  const CATEGORY_CLS = { CORRECT_UNDERSTANDING: 'mastered', POSSIBLE_CARELESS_SLIP: 'verify', CALCULATION_OR_UNIT_ERROR: 'verify', PREREQUISITE_GAP: 'gap', CONCEPTUAL_GAP: 'gap' };
 
   const badge = (cls, text, dot) => '<span class="badge ' + cls + '">' + (dot ? '<span class="dot"></span>' : '') + esc(text) + '</span>';
   const statusBadge = (st) => badge(STATUS[st].cls, STATUS[st].label, true);

@@ -73,7 +73,7 @@ test('acceptance journey: wrong attempt to verified mastery, with graph and pers
   F.tryAgain(store, s.id);
   assert.equal(s.state, 'READY');
   const solved = F.submitAttempt(store, s.id, '2 A', 'V2 = 24 V, I2 = 2 A');
-  assert.equal(solved.diagnosis.category, 'CORRECT');
+  assert.equal(solved.diagnosis.category, 'CORRECT_UNDERSTANDING');
   assert.equal(s.state, 'ATTEMPT_CORRECT');
 
   // 11. persistence: a new store instance sees everything
@@ -89,7 +89,7 @@ test('a careless slip changes no mastery and asks for a retry', () => {
   const s = F.startSession(store, T, P);
   const before = JSON.stringify(store.masteryMap(T));
   const r = F.submitAttempt(store, s.id, '2.1 A', 'V2 = 24 V');
-  assert.equal(r.diagnosis.category, 'CARELESS_SLIP');
+  assert.equal(r.diagnosis.category, 'CALCULATION_OR_UNIT_ERROR');
   assert.equal(s.state, 'RETRY_REQUIRED');
   assert.equal(JSON.stringify(store.masteryMap(T)), before);
   assert.equal(store.events().filter((e) => e.type === 'OBSERVATION').length, 0);
@@ -180,7 +180,7 @@ test('a repeated unit error escalates to a unit_conv probe, a single one does no
   const store = fresh();
   const s = F.startSession(store, T, 'tx-kv-primary');
   const r = F.submitAttempt(store, s.id, '0.02 A', '');
-  assert.equal(r.diagnosis.category, 'UNIT_ERROR');
+  assert.equal(r.diagnosis.category, 'CALCULATION_OR_UNIT_ERROR');
   assert.equal(s.state, 'RETRY_REQUIRED');
   assert.equal(store.events().filter((e) => e.type === 'OBSERVATION').length, 0, 'a single unit slip changes no mastery');
   F.tryAgain(store, s.id);

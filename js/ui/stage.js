@@ -57,8 +57,8 @@
   function slipCard(session) {
     const d = session.diagnosis;
     let next;
-    if (d.category === 'CARELESS_SLIP') next = 'Re-check the last step of your working. Your mastery estimates were not changed.';
-    else if (d.category === 'UNIT_ERROR') next = 'Re-check unit prefixes and conversions. One unit slip does not change mastery; a repeat will trigger a probe on unit conversion.';
+    if (d.category === 'POSSIBLE_CARELESS_SLIP') next = 'Re-check the last step of your working. Your mastery estimates were not changed.';
+    else if (d.category === 'CALCULATION_OR_UNIT_ERROR') next = 'Re-check unit prefixes and conversions. One unit slip does not change mastery; a repeat will trigger a probe on unit conversion.';
     else next = 'No probe found a confirmed gap, so no mastery was lowered. Re-read the problem and try again.';
     return '<div class="card stack" style="--gap-y:12px"><p class="eyebrow">Next step</p><p>' + esc(next) + '</p><div><button class="btn primary" type="button" data-action="try-again" data-fk="retry">Try again</button></div></div>';
   }

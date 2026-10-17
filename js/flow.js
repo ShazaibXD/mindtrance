@@ -87,24 +87,24 @@
       // No deterministic checker exists for open-ended answers: the judgement (AI or demo rubric) decides, and says so.
       const j = opts && opts.judgement;
       if (!j) return { ok: false, error: 'This answer needs a judgement before it can be diagnosed.' };
-      if (j.isCorrect) res = { engine: j.engine, category: 'CORRECT', confidence: j.confidence, evidence: j.evidence, matchedBy: j.matchedBy || 'ai', hintConcept: null, candidates: [] };
+      if (j.isCorrect) res = { engine: j.engine, category: 'CORRECT_UNDERSTANDING', confidence: j.confidence, evidence: j.evidence, matchedBy: j.matchedBy || 'ai', hintConcept: null, candidates: [] };
       else res = applyOverride(track, res, j, mastery);
       res.judged = true;
     }
 
     const override = opts && opts.override;
-    if (override && res.matchedBy === 'fallback' && res.category !== 'CORRECT') res = applyOverride(track, res, override, mastery);
+    if (override && res.matchedBy === 'fallback' && res.category !== 'CORRECT_UNDERSTANDING') res = applyOverride(track, res, override, mastery);
 
     const now = store.now();
     MT.machine.transition(s, 'ATTEMPT_SUBMITTED', 'attempt ' + (s.attemptCount + 1), now);
     s.attemptCount += 1;
     s.attempt = { answer: String(answer), working: String(working || ''), at: now };
 
-    if (res.category === 'CORRECT') {
+    if (res.category === 'CORRECT_UNDERSTANDING') {
       MT.machine.transition(s, 'ATTEMPT_CORRECT', 'verified correct', now);
       s.diagnosis = res;
       s.result = { ...(s.result || {}), solved: true };
-      logEvent(store, s, 'ATTEMPT', { category: 'CORRECT', correct: true });
+      logEvent(store, s, 'ATTEMPT', { category: 'CORRECT_UNDERSTANDING', correct: true });
       const o = store.observe(s.trackId, track.target, true, { sessionId: s.id, problemId: s.problemId, source: 'attempt' });
       s.result.targetBefore = o.before;
       s.result.targetAfter = o.after;
@@ -118,9 +118,9 @@
     logEvent(store, s, 'ATTEMPT', { category: res.category, correct: false, conceptId: res.hintConcept || null, matchedBy: res.matchedBy });
 
     let candidates = res.candidates || [];
-    if (res.category === 'UNIT_ERROR' && res.hintConcept) {
-      const priorUnit = store.events().filter((e) => e.type === 'ATTEMPT' && e.category === 'UNIT_ERROR' && e.trackId === s.trackId && e.sessionId !== s.id).length;
-      const sameSession = store.events().filter((e) => e.type === 'ATTEMPT' && e.category === 'UNIT_ERROR' && e.sessionId === s.id).length;
+    if (res.category === 'CALCULATION_OR_UNIT_ERROR' && res.hintConcept) {
+      const priorUnit = store.events().filter((e) => e.type === 'ATTEMPT' && e.category === 'CALCULATION_OR_UNIT_ERROR' && e.trackId === s.trackId && e.sessionId !== s.id).length;
+      const sameSession = store.events().filter((e) => e.type === 'ATTEMPT' && e.category === 'CALCULATION_OR_UNIT_ERROR' && e.sessionId === s.id).length;
       if (priorUnit + sameSession >= 2) {
         candidates = [{ id: res.hintConcept, score: 1, parts: {}, fromEvidence: true }];
         res.escalated = true;
@@ -131,7 +131,7 @@
     if (candidates.length) {
       MT.machine.transition(s, 'PROBE_REQUIRED', 'probe ' + candidates[0].id, now);
     } else {
-      MT.machine.transition(s, 'RETRY_REQUIRED', res.category === 'CARELESS_SLIP' ? 'slip: no mastery change' : 'no probe needed', now);
+      MT.machine.transition(s, 'RETRY_REQUIRED', res.category === 'POSSIBLE_CARELESS_SLIP' ? 'slip: no mastery change' : 'no probe needed', now);
     }
     store.touch(s);
     return { ok: true, session: s, diagnosis: res };
@@ -144,7 +144,7 @@
       engine: ov.engine || 'gemini', category: ov.category, confidence: ov.confidence, evidence: ov.evidence, matchedBy: ov.matchedBy || 'ai',
       hintConcept: gr.byId.has(ov.hintConcept) ? ov.hintConcept : null,
     });
-    if (out.category === 'PREREQUISITE_GAP' || out.category === 'CONCEPT_MISCONCEPTION') {
+    if (out.category === 'PREREQUISITE_GAP' || out.category === 'CONCEPTUAL_GAP') {
       const hints = out.hintConcept ? { [out.hintConcept]: 0.8 } : {};
       const ranked = MT.graph.rankSuspects(gr, track.target, mastery, { hints, includeTarget: true }).filter((r) => r.score > 0).slice(0, MAX_PROBES);
       out.candidates = ranked.map((r) => ({ id: r.id, score: r.score, parts: r.parts, fromEvidence: r.parts.hint > 0 }));
@@ -281,7 +281,7 @@
     const attempt = { answer: String(answer), category: res.category, at: now, problemSeed: s.verification.seed };
     s.verification.attempts.push(attempt);
 
-    if (res.category === 'CORRECT') {
+    if (res.category === 'CORRECT_UNDERSTANDING') {
       const before = store.p(s.trackId, gapId);
       const o = store.observe(s.trackId, gapId, true, { sessionId: s.id, source: 'verification' });
       if (gapId !== track.target) store.observe(s.trackId, track.target, true, { sessionId: s.id, source: 'verification-transfer' });
@@ -300,7 +300,7 @@
       return { ok: true, session: s, outcome: 'NEEDS_MORE', diagnosis: res, before, after: o.after };
     }
 
-    const implicated = res.hintConcept === gapId && (res.category === 'PREREQUISITE_GAP' || res.category === 'CONCEPT_MISCONCEPTION' || res.category === 'UNIT_ERROR');
+    const implicated = res.hintConcept === gapId && (res.category === 'PREREQUISITE_GAP' || res.category === 'CONCEPTUAL_GAP' || res.category === 'CALCULATION_OR_UNIT_ERROR');
     if (implicated) {
       const o = store.observe(s.trackId, gapId, false, { sessionId: s.id, source: 'verification' });
       attempt.after = o.after;

@@ -44,7 +44,7 @@
     const m = new Map();
     for (const e of events) {
       if (e.type !== 'ATTEMPT' || e.correct || !e.conceptId) continue;
-      if (e.category !== 'PREREQUISITE_GAP' && e.category !== 'CONCEPT_MISCONCEPTION' && e.category !== 'UNIT_ERROR') continue;
+      if (e.category !== 'PREREQUISITE_GAP' && e.category !== 'CONCEPTUAL_GAP' && e.category !== 'CALCULATION_OR_UNIT_ERROR') continue;
       const k = key(e) + ':' + e.category;
       const row = m.get(k) || { trackId: e.trackId, conceptId: e.conceptId, category: e.category, count: 0, last: 0 };
       row.count += 1;

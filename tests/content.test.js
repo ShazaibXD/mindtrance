@@ -10,7 +10,7 @@ function checkProblemShape(p, label) {
   assert.ok(Array.isArray(p.solution) && p.solution.length >= 1, label + ' solution');
   const pats = p.patterns || [];
   for (const pat of pats) {
-    assert.ok(['CARELESS_SLIP', 'UNIT_ERROR', 'PREREQUISITE_GAP', 'CONCEPT_MISCONCEPTION'].includes(pat.cat), label + ' pattern cat');
+    assert.ok(MT.diagnose.OUTCOMES[pat.cat] && !['correct', 'unverified'].includes(MT.diagnose.kindOf(pat.cat)), label + ' pattern cat ' + pat.cat);
     assert.ok(pat.evidence, label + ' pattern evidence');
     if (p.answer.kind === 'number') {
       assert.ok(Number.isFinite(pat.value), label + ' pattern value');

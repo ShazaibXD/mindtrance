@@ -35,7 +35,7 @@ test('verification answers are computed from first principles', () => {
 });
 
 test('instantiate drops signatures that coincide with the correct answer', () => {
-  const def = { id: 'x', title: 't', gen: () => ({ statement: 's', answer: { kind: 'number', value: 5, unit: '', tolPct: 1 }, solution: ['a'], patterns: [{ value: 5.01, cat: 'CARELESS_SLIP', evidence: 'e' }, { value: 9, cat: 'CARELESS_SLIP', evidence: 'e' }] }) };
+  const def = { id: 'x', title: 't', gen: () => ({ statement: 's', answer: { kind: 'number', value: 5, unit: '', tolPct: 1 }, solution: ['a'], patterns: [{ value: 5.01, cat: 'POSSIBLE_CARELESS_SLIP', evidence: 'e' }, { value: 9, cat: 'POSSIBLE_CARELESS_SLIP', evidence: 'e' }] }) };
   assert.deepEqual(MT.data.instantiate(def, 1).patterns.map((p) => p.value), [9]);
 });
 

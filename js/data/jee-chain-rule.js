@@ -88,11 +88,11 @@
         setup: [/6\s*x/i], unitSensitive: false,
         patterns: [
           { expr: 'cos(3x^2+1)', cat: 'PREREQUISITE_GAP', concept: 'chain_rule', evidence: 'The answer is the outer derivative only: the inner derivative factor was dropped.' },
-          { expr: '3x cos(3x^2+1)', cat: 'PREREQUISITE_GAP', concept: 'power_rule', evidence: 'The inner derivative 3x shows the exponent multiplier was forgotten (d/dx 3x^2 is 6x).' },
+          { expr: '3x cos(3x^2+1)', cat: 'PROCEDURAL_ERROR', concept: 'power_rule', evidence: 'The inner derivative 3x shows the exponent multiplier was forgotten (d/dx 3x^2 is 6x).' },
           { expr: '-6x cos(3x^2+1)', cat: 'PREREQUISITE_GAP', concept: 'trig_deriv', evidence: 'A minus sign was added: that belongs to the derivative of cos, not sin.' },
           { expr: '6x sin(3x^2+1)', cat: 'PREREQUISITE_GAP', concept: 'trig_deriv', evidence: 'The derivative of sin was written as sin.' },
           { expr: '6x cos(6x)', cat: 'PREREQUISITE_GAP', concept: 'composite_fn', evidence: 'The inner function was differentiated inside the cosine as well as outside.' },
-          { expr: '6x cos(3x^2)', cat: 'CARELESS_SLIP', concept: null, evidence: 'The +1 inside the cosine was lost while copying; the method is otherwise correct.' },
+          { expr: '6x cos(3x^2)', cat: 'POSSIBLE_CARELESS_SLIP', concept: null, evidence: 'The +1 inside the cosine was lost while copying; the method is otherwise correct.' },
         ],
         keywords: [],
       };

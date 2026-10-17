@@ -76,8 +76,8 @@
     const h = 32 - p;
     return [
       { value: Math.pow(2, h), cat: 'PREREQUISITE_GAP', concept: 'reserved_addr', evidence: 'The total number of addresses was given: the network and broadcast addresses were not removed.' },
-      { value: Math.pow(2, h + 1) - 2, cat: 'PREREQUISITE_GAP', concept: 'host_bits', evidence: 'The exponent is one too large: the host-bit count was miscalculated.' },
-      { value: Math.pow(2, h - 1) - 2, cat: 'PREREQUISITE_GAP', concept: 'host_bits', evidence: 'The exponent is one too small: the host-bit count was miscalculated.' },
+      { value: Math.pow(2, h + 1) - 2, cat: 'PROCEDURAL_ERROR', concept: 'host_bits', evidence: 'The exponent is one too large: the host-bit count was miscalculated.' },
+      { value: Math.pow(2, h - 1) - 2, cat: 'PROCEDURAL_ERROR', concept: 'host_bits', evidence: 'The exponent is one too small: the host-bit count was miscalculated.' },
       { value: h, cat: 'PREREQUISITE_GAP', concept: 'powers_of_two', evidence: 'The number of host bits was given, but 2^h was never taken.' },
       { value: Math.pow(2, p) - 2, cat: 'PREREQUISITE_GAP', concept: 'binary_prefix', evidence: 'The prefix length was used as the number of host bits.' },
       { value: Math.pow(2, h) - 1, cat: 'PREREQUISITE_GAP', concept: 'reserved_addr', evidence: 'Only one reserved address was subtracted instead of two.' },

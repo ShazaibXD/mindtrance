@@ -94,10 +94,10 @@
     const mag = n; const ans = (256 - n) % 256;
     const forgetOne = (ans + 255) % 256;
     return [
-      { value: bits(forgetOne), cat: 'PREREQUISITE_GAP', concept: 'binary_add', evidence: 'The bits were inverted but 1 was never added: this is the one\'s complement, off by one.' },
+      { value: bits(forgetOne), cat: 'PROCEDURAL_ERROR', concept: 'binary_add', evidence: 'The bits were inverted but 1 was never added: this is the one\'s complement, off by one.' },
       { value: bits(128 + mag), cat: 'PREREQUISITE_GAP', concept: 'sign_repr', evidence: 'Only the leading bit was set: that is sign-magnitude, not two\'s complement.' },
       { value: bits(mag), cat: 'PREREQUISITE_GAP', concept: 'bit_invert', evidence: 'The positive binary number was given: the bits were never inverted.' },
-      { value: rev(bits(mag)), cat: 'PREREQUISITE_GAP', concept: 'div_remainder', evidence: 'The magnitude\'s bits appear reversed: the remainders were read in the order produced.' },
+      { value: rev(bits(mag)), cat: 'PROCEDURAL_ERROR', concept: 'div_remainder', evidence: 'The magnitude\'s bits appear reversed: the remainders were read in the order produced.' },
     ];
   }
   const dedupe = (ps, answer) => { const seen = new Set([answer]); return ps.filter((p) => (seen.has(p.value) ? false : seen.add(p.value))); };

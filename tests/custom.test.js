@@ -88,7 +88,7 @@ test('validateJudgement accepts correct and incorrect verdicts and rejects inval
   const { track } = withFixture();
   const ok = MT.ai.validateJudgement({ is_correct: false, category: 'PREREQUISITE_GAP', confidence: 0.5, suspected_concept_id: 'reparations', evidence_from_student_work: 'Skips the economy.' }, track);
   assert.ok(ok.ok); assert.equal(ok.value.isCorrect, false); assert.equal(ok.value.hintConcept, 'reparations');
-  const right = MT.ai.validateJudgement({ is_correct: true, category: 'CORRECT', confidence: 0.9, suspected_concept_id: '', evidence_from_student_work: 'Links the terms to extremism.' }, track);
+  const right = MT.ai.validateJudgement({ is_correct: true, category: 'CORRECT_UNDERSTANDING', confidence: 0.9, suspected_concept_id: '', evidence_from_student_work: 'Links the terms to extremism.' }, track);
   assert.ok(right.ok); assert.equal(right.value.isCorrect, true); assert.match(right.value.evidence[0], /not deterministically verified/);
   for (const b of [{ is_correct: 'yes' }, { is_correct: false, category: 'PREREQUISITE_GAP', confidence: 0.5, suspected_concept_id: 'made_up', evidence_from_student_work: 'x' }, { is_correct: false, category: 'PREREQUISITE_GAP', confidence: 'high', suspected_concept_id: 'reparations', evidence_from_student_work: 'x' }, { is_correct: true, confidence: 1, evidence_from_student_work: '' }, 'junk']) {
     assert.equal(MT.ai.validateJudgement(b, track).ok, false, JSON.stringify(b));
@@ -98,9 +98,9 @@ test('validateJudgement accepts correct and incorrect verdicts and rejects inval
 test('judgeOpen sends the question and concept ids and validates the reply', async () => {
   const { track } = withFixture();
   let body;
-  const r = await MT.ai.judgeOpen({ apiKey: 'k', fetch: async (u, i) => { body = JSON.parse(i.body); return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({ is_correct: false, category: 'CONCEPT_MISCONCEPTION', confidence: 0.6, suspected_concept_id: 'versailles_wwii', evidence_from_student_work: 'One-sided claim.' }) }] } }] }) }; } }, track, track.question, 'The treaty caused it.', '');
+  const r = await MT.ai.judgeOpen({ apiKey: 'k', fetch: async (u, i) => { body = JSON.parse(i.body); return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({ is_correct: false, category: 'CONCEPTUAL_GAP', confidence: 0.6, suspected_concept_id: 'versailles_wwii', evidence_from_student_work: 'One-sided claim.' }) }] } }] }) }; } }, track, track.question, 'The treaty caused it.', '');
   assert.ok(r.ok);
-  assert.equal(r.value.category, 'CONCEPT_MISCONCEPTION');
+  assert.equal(r.value.category, 'CONCEPTUAL_GAP');
   assert.ok(body.contents[0].parts[0].text.includes('versailles_wwii'));
 });
 
@@ -122,7 +122,7 @@ test('classify handles open and choice answers', () => {
   assert.equal(MT.diagnose.classify(track, open, 'ab', '').category, 'INVALID_INPUT');
   assert.equal(MT.diagnose.classify(track, open, 'Some real answer text', '').needsJudge, true);
   const v = MT.data.instantiate(track.verification.find((t) => t.concept === 'reparations'), 1);
-  assert.equal(MT.diagnose.classify(track, v, String(v.answer.correct), '').category, 'CORRECT');
+  assert.equal(MT.diagnose.classify(track, v, String(v.answer.correct), '').category, 'CORRECT_UNDERSTANDING');
   const wrong = MT.diagnose.classify(track, v, String((v.answer.correct + 1) % 3), '');
   assert.equal(wrong.hintConcept, 'reparations');
   assert.equal(MT.diagnose.classify(track, v, 'banana', '').category, 'INVALID_INPUT');
@@ -155,7 +155,7 @@ test('open-ended journey: low-confidence follow-up probe, gap, recovery, fresh q
   assert.ok(store.p(id, 'ww1_settlement') >= 0.8);
   F.tryAgain(store, s.id);
   const ok = F.submitAttempt(store, s.id, 'Reparations wrecked the economy, creating resentment that the Nazis exploited.', '', { judgement: MT.custom.fixtureJudge('Reparations wrecked the economy, creating resentment that the Nazis exploited.') });
-  assert.equal(ok.diagnosis.category, 'CORRECT');
+  assert.equal(ok.diagnosis.category, 'CORRECT_UNDERSTANDING');
   assert.equal(s.state, 'ATTEMPT_CORRECT');
 });
 
@@ -177,9 +177,9 @@ test('a wrong fresh question sends the student back to recovery', () => {
 test('a correct AI judgement is labelled and credits the target concept', () => {
   const { store, id, track } = withFixture();
   const s = F.startSession(store, id, 'q');
-  const j = { engine: 'gemini', isCorrect: true, category: 'CORRECT', confidence: 0.9, hintConcept: null, evidence: ['AI judgement (not deterministically verified): linked.'] };
+  const j = { engine: 'gemini', isCorrect: true, category: 'CORRECT_UNDERSTANDING', confidence: 0.9, hintConcept: null, evidence: ['AI judgement (not deterministically verified): linked.'] };
   const r = F.submitAttempt(store, s.id, 'A well argued essay answer.', '', { judgement: j });
-  assert.equal(r.diagnosis.category, 'CORRECT');
+  assert.equal(r.diagnosis.category, 'CORRECT_UNDERSTANDING');
   assert.equal(r.diagnosis.engine, 'gemini');
   assert.ok(store.p(id, track.target) > 0.45);
 });

@@ -17,17 +17,17 @@ test('valid output is accepted and normalised', () => {
 
 test('invalid output is rejected safely', () => {
   const bad = [
-    'not json', '[]', null, { ...good, category: 'CORRECT' }, { ...good, confidence: 'high' }, { ...good, confidence: NaN },
+    'not json', '[]', null, { ...good, category: 'CORRECT_UNDERSTANDING' }, { ...good, confidence: 'high' }, { ...good, confidence: NaN },
     { ...good, suspected_concept_id: 'invented_concept' }, { ...good, suspected_concept_id: '' }, { ...good, evidence_from_student_work: '  ' },
   ];
   for (const b of bad) assert.equal(MT.ai.validate(b, track).ok, false, JSON.stringify(b));
 });
 
 test('confidence is clamped and misconception maps to the target concept', () => {
-  const r = MT.ai.validate({ ...good, category: 'CONCEPT_MISCONCEPTION', confidence: 4 }, track);
+  const r = MT.ai.validate({ ...good, category: 'CONCEPTUAL_GAP', confidence: 4 }, track);
   assert.equal(r.value.confidence, 1);
   assert.equal(r.value.hintConcept, track.target);
-  const slip = MT.ai.validate({ ...good, category: 'CARELESS_SLIP', suspected_concept_id: '' }, track);
+  const slip = MT.ai.validate({ ...good, category: 'POSSIBLE_CARELESS_SLIP', suspected_concept_id: '' }, track);
   assert.ok(slip.ok);
   assert.equal(slip.value.hintConcept, null);
 });
@@ -78,5 +78,5 @@ test('AI override is applied only to unclassified answers and cannot declare cor
   assert.equal(r2.diagnosis.candidates[0].id, 'unit_conv');
   // A correct answer is never overridden.
   const s3 = store.newSession({ trackId: 'eee-transformers', problemId: 'tx-secondary-current', seed: 1, attemptCount: 0, history: [] });
-  assert.equal(MT.flow.submitAttempt(store, s3.id, '2 A', '', { override: ov }).diagnosis.category, 'CORRECT');
+  assert.equal(MT.flow.submitAttempt(store, s3.id, '2 A', '', { override: ov }).diagnosis.category, 'CORRECT_UNDERSTANDING');
 });

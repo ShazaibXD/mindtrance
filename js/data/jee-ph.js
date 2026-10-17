@@ -110,9 +110,9 @@
         patterns: [
           { value: 8, cat: 'PREREQUISITE_GAP', concept: 'total_h', evidence: 'The result 8 is -log C with water ignored. An acid cannot give pH above 7.' },
           { value: 7, cat: 'PREREQUISITE_GAP', concept: 'total_h', evidence: 'The result 7 treats the acid as negligible next to water.' },
-          { value: 6.96, cat: 'PREREQUISITE_GAP', concept: 'total_h', evidence: 'The result 6.96 comes from adding 10^-8 and 10^-7 directly instead of solving the charge balance.' },
+          { value: 6.96, cat: 'PROCEDURAL_ERROR', concept: 'total_h', evidence: 'The result 6.96 comes from adding 10^-8 and 10^-7 directly instead of solving the charge balance.' },
           { value: -8, cat: 'PREREQUISITE_GAP', concept: 'log_ph', evidence: 'The result -8 is log[H+] without the minus sign.' },
-          { value: 6, cat: 'CARELESS_SLIP', concept: null, evidence: 'The result 6 is what 10^-6 M would give: the exponent looks misread.' },
+          { value: 6, cat: 'READING_OR_INTERPRETATION_ERROR', concept: null, evidence: 'The result 6 is what 10^-6 M would give: the exponent looks misread.' },
         ],
         keywords: [
           { re: /\[?H\+?\]?\s*=\s*(1\s*[x*×]\s*)?10\^?-?8\b[^+]*$/i, cat: 'PREREQUISITE_GAP', concept: 'total_h', evidence: 'The working sets [H+] = 10^-8 and never adds the water contribution.' },
