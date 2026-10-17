@@ -14,7 +14,7 @@ The original brief asked for Next.js, FastAPI, Supabase and Gemini. For this hac
 | FastAPI + Pydantic | Pure JS modules in `js/core` with explicit validators |
 | SymPy | Safe expression parser and numeric equivalence checker (`js/core/expr.js`), no `eval` |
 | Supabase auth + DB | Local profiles and `localStorage` persistence (not real auth) |
-| Gemini structured output | Optional browser-side call with schema validation (`js/core/ai.js`) |
+| Gemini structured output | Optional browser-side calls with schema validation (`js/core/ai.js`): classify, build a map for any question, judge an open-ended answer |
 
 ## Layers
 
@@ -75,3 +75,15 @@ Illegal transitions throw. Sessions are persisted after every step, so a refresh
 - Thresholds: mastered at 0.80 or above, confirmed gap below 0.45 and only with at least one missed answer on the concept, otherwise needs verification.
 - A failed probe confirms a gap only if the posterior falls below 0.45. A strong prior can survive one miss, in which case the next hypothesis is probed.
 - Verification succeeds only when the estimate reaches 0.80; otherwise another fresh problem is issued.
+
+## Universal input (Ask anything)
+
+The three priorities from the product brief and how each is met:
+
+1. **Universal input.** `MT.ai.generateTrack` asks Gemini for a prerequisite map in a strict schema (4 to 6 concepts, one level 3 target, lesson, probe, practice and two fresh questions per concept). The schema extends the original `generate-track` endpoint of the uploaded backend to non-STEM content. `MT.custom.validateSpec` rejects anything malformed: bad ids, duplicate or unknown prerequisites, cycles, unreachable concepts, wrong option counts, out-of-range values. A valid spec is stored per profile and rebuilt by `MT.custom.buildTrack` into the same track shape as built-in content, so the map, workspace, dashboard and analytics work unchanged.
+2. **Evidence-based diagnosis.** Open-ended answers have no deterministic checker, so `MT.ai.judgeOpen` returns a verdict (correct or not, category, suspected concept, confidence, evidence). Every concept id is validated against the graph. Whenever the evidence strength is below 60%, the probe is presented as an explicit follow-up ("Not sure yet") and nothing is taught until it is answered. This applies to built-in tracks too.
+3. **Verified learning.** The fresh question is multiple choice and tagged with the concept being recovered, so it is graded deterministically and updates mastery through the same BKT rules. Verification is never decided by the model.
+
+Answer kinds: `number` and `expr` (deterministic), `choice` (deterministic, used for fresh questions on custom maps), `open` (needs a judgement from Gemini or the demo rubric; the result carries `engine` and is labelled in the UI).
+
+The demo fixture is a hand-written map and a keyword rubric for one history question. It exists so the whole loop can be shown without a key, and is labelled as scripted wherever it appears.

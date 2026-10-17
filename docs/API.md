@@ -45,6 +45,14 @@ The original brief called for a versioned REST API. This build is client-side on
 
 `validate(raw, track)` strictly validates a model response. `classify(cfg, track, problem, answer, working)` calls Gemini with the key in an `x-goog-api-key` header, a timeout, and friendly error messages that never contain the key.
 
+## MT.custom
+
+`validateSpec(raw)` returns `{ ok, spec }` or `{ ok:false, error }`. `buildTrack({ id, spec, question, source })` returns a normal track (`custom: true`, one open-ended problem, concept-tagged `choice` verification templates). `makeId(question)`, `FIXTURE` (the demo question and map), `fixtureJudge(answer)` (scripted rubric, engine `demo-rubric`).
+
+## MT.ai (additions)
+
+`generateTrack(cfg, question)` returns a validated spec. `judgeOpen(cfg, track, question, answer, working)` returns `{ engine, isCorrect, category, confidence, hintConcept, evidence[] }`. `callGemini` is the single network helper (key in `x-goog-api-key` header, timeout, friendly errors).
+
 ## MT.store
 
-`create({ storage?, now? })`. Profiles (`signUp`, `signIn`, `signOut`, `renameProfile`, `deleteProfile`), mastery (`observe`, `learn`, `conceptState`, `graphState`), sessions (`newSession`, `getSession`, `activeFor`, `sessionList`), `events()`, `settings()`, `exportData()`.
+`create({ storage?, now? })`. Custom questions: `addCustomTrack({ question, spec, source })`, `removeCustomTrack(id)`, `customTracks()`. Profiles (`signUp`, `signIn`, `signOut`, `renameProfile`, `deleteProfile`), mastery (`observe`, `learn`, `conceptState`, `graphState`), sessions (`newSession`, `getSession`, `activeFor`, `sessionList`), `events()`, `settings()`, `exportData()`.

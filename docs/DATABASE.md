@@ -12,6 +12,7 @@ There is no database in this build. State is one JSON document in `localStorage`
 
 - `mastery["<trackId>:<conceptId>"]` is `{ p, obs, fails, learned, updatedAt }`.
 - `events` is an append-only log (capped at 2000). Types: `ATTEMPT`, `OBSERVATION`, `LEARNING`, `RECOVERY_STARTED`, `MASTERY_VERIFIED`, `VERIFICATION_FAILED`. Observations and learning are separate event types.
+- `customs[trackId]` holds `{ id, spec, question, source, createdAt }` for questions the student asked. Tracks are rebuilt from the spec on load; functions are never stored.
 - `sessions` hold the diagnostic state machine state, the attempt, diagnosis, probes, gap, recovery and verification so a page refresh resumes exactly where the student left off.
 - Settings are merged over defaults on read, so older saves keep working.
 

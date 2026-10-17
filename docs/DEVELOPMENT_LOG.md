@@ -23,6 +23,17 @@
 - Added a Playwright suite (36 tests) that drives the installed Chrome, so no browser download. It uses a tiny Node static server rather than depending on Python. Tests found two selector ambiguities in the suite itself and no application bugs.
 - Generated verification answers are read from app state in the tests because they are random; everything else goes through the UI.
 
+## Third pass: universal input
+
+Prompted by the recommendation to support non-STEM subjects and open-ended answers, and to keep the uploaded backend's ideas (map generation, mistake classification, targeted probes, BKT) as the foundation.
+
+- The Python `generate-track` and `diagnose-attempt` schemas were ported to JavaScript and extended: more concepts, per-concept probe, practice and two fresh questions, and a judgement that can say an answer is correct. The Python service itself is not part of this repo.
+- Correctness for open-ended answers cannot be deterministic, so it is an explicit, labelled AI judgement. Verification of learning is kept deterministic by using multiple-choice fresh questions tagged with the concept being recovered.
+- Weak evidence (below 60%) now turns the probe into a visibly labelled follow-up question for every track, not just custom ones.
+- Custom maps are stored as validated plain data and rebuilt into tracks, so no code path is special-cased downstream. Deleting a question removes its sessions, mastery and events so analytics never reference a missing track.
+- A scripted history fixture and keyword rubric make the loop demonstrable without a key and are labelled as not AI.
+- Playwright's `page.route` is used to mock the Google endpoint, so the real client code (headers, schema, validation, error handling) is exercised in the browser without network access or a key.
+
 ## Not done
 
-Real auth, database, live Gemini verification, KaTeX, cross-browser runs. See `docs/ROADMAP.md`.
+Real auth, database, live Gemini verification of any of the three AI paths, KaTeX, cross-browser runs. See `docs/ROADMAP.md`.

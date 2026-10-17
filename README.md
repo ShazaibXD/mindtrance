@@ -27,6 +27,7 @@ Then click **Judge demo** on the landing page for a guided run of the whole loop
 - **Knowledge gap map.** Interactive SVG graph: pan, zoom, fit, dependency highlighting, concept panel, recovery action, keyboard support, and a table alternative.
 - **Progress analytics.** Mastery over time, attempts, correctness trend, recovery success, repeated misconceptions, weakest concepts.
 - **Safe parsing.** Numbers, units and algebraic expressions are parsed by a hand-written parser (no `eval`) and compared numerically.
+- **Ask anything.** Type a question from any subject, no subject picker. With your own Gemini key MINDTRACE builds a prerequisite map for it, judges your open-ended answer, asks a targeted follow-up when the evidence is weak, and verifies learning with a fresh question that is checked deterministically. A scripted history question works with no key.
 - **Seven tracks** across JEE Physics, JEE Chemistry, JEE Mathematics, NEET Biology, GATE CS and first-year engineering (EEE and CSE), defined as data.
 - **Judge demo mode**, light and dark themes, responsive layout, optional Gemini classification.
 
@@ -35,7 +36,9 @@ Then click **Judge demo** on the landing page for a guided run of the whole loop
 | Area | Status |
 | --- | --- |
 | Diagnosis engine | Rule-based and deterministic. Every result is labelled with the engine that produced it. |
-| Gemini integration | Optional, bring your own key in Settings. Schema-validated and unit-tested with mocked responses. **Not exercised against the live API.** |
+| Gemini integration | Optional, bring your own key in Settings. Used for (1) classifying unrecognised answers, (2) building maps for questions you ask, (3) judging open-ended answers. All schema-validated, unit-tested and e2e-tested with a mocked Google endpoint. **Never exercised against the live API.** |
+| Open-ended answers | Judged by Gemini or, for the demo question only, a keyword rubric. This is an AI judgement and is labelled as one everywhere. It is not a verified result. |
+| Generated maps | Written by Gemini, validated for structure, **not reviewed by a person**. Can be wrong. |
 | Accounts | Local profiles in `localStorage`, no password. **Not real authentication.** |
 | Database | None. Data lives in the browser. A Supabase schema is proposed in `docs/DATABASE.md` but not implemented. |
 | Content | 7 hand-authored tracks (39 concepts, 8 original problems, 14 fresh-problem generators). A seed for the format, not a syllabus. |
@@ -62,12 +65,20 @@ There are no required environment variables and no `.env` files. The optional Ge
 ## Running tests
 
 ```bash
-npm test               # 127 unit and smoke tests, no install needed
+npm test               # 140 unit and smoke tests, no install needed
 npm install            # once, for Playwright
-npm run test:e2e       # 36 browser tests driving the real UI
+npm run test:e2e       # 42 browser tests driving the real UI
 ```
 
 The unit suite covers the engine, content, state machine, store, flow, analytics, UI helpers, graph rendering and three headless-Chrome smoke tests (skipped when Chrome is not installed; set `CHROME_BIN` to point at a browser). The e2e suite clicks through the whole student journey. See `docs/TESTING.md`.
+
+## Ask anything
+
+1. Open **Ask anything** in the sidebar.
+2. Without a key: click **Open the demo question**. It is a history essay question with a pre-written map. Answers are graded by a keyword rubric (labelled "not AI"). Try a weak answer such as "The treaty was unfair to Germany." to see the follow-up question, then follow the loop.
+3. With a key: add it in Settings, type any question and click **Build my learning map**. Your answer is judged by Gemini.
+
+Your own questions are stored per profile and can be deleted from the same page.
 
 ## Demo mode
 

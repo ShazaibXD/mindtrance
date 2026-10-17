@@ -58,7 +58,7 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
   ui.actions['reset-progress'] = async () => {
-    if (await ui.confirm({ title: 'Reset all progress?', body: 'This deletes mastery estimates, events and sessions for this profile. It cannot be undone.', confirmLabel: 'Reset progress', danger: true })) {
+    if (await ui.confirm({ title: 'Reset all progress?', body: 'This deletes mastery estimates, events, sessions and the questions you asked, for this profile. It cannot be undone.', confirmLabel: 'Reset progress', danger: true })) {
       ui.store.resetProgress(); ui.drafts = {}; ui.toast('Progress reset.'); ui.render();
     }
   };

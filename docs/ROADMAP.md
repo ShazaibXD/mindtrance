@@ -6,6 +6,9 @@
 - SVG knowledge gap map, progress analytics, local persistence
 
 ## Next
+- Verify Ask anything against the live Gemini API, tune the prompts, and add a second model-based check of generated content
+- Let teachers review and edit generated maps before students use them
+- Typed and image-based working capture for open-ended answers
 - Real authentication and a hosted database (Supabase with row-level security)
 - FastAPI service with SymPy for symbolic verification of free-form answers
 - KaTeX rendering and richer working-step capture

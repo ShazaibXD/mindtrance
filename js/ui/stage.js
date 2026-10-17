@@ -5,7 +5,11 @@
   const ui = MT.ui;
   const { esc, fmt } = ui;
 
-  const ENGINE = { 'rule-based': 'Rule-based engine (deterministic, no AI)', gemini: 'Gemini reading, schema-validated' };
+  const ENGINE = {
+    'rule-based': 'Rule-based engine (deterministic, no AI)',
+    gemini: 'Gemini reading, schema-validated. For open-ended answers this is an AI judgement, not a verified result.',
+    'demo-rubric': 'Demo rubric: scripted keyword rules, not AI. Used only for the demo question.',
+  };
 
   const noteHtml = (n) => (n ? '<div class="notice ' + n.kind + '" role="status">' + ui.icon(n.kind === 'good' ? 'check' : n.kind === 'bad' ? 'alert' : 'info') + '<div>' + n.html + '</div></div>' : '');
 
@@ -43,8 +47,9 @@
   function probeCard(session) {
     const pr = MT.flow.currentProbe(session);
     if (!pr) return '';
-    return '<form class="card stack" data-form="probe" style="--gap-y:12px"><div class="row between"><h3>Diagnostic check ' + pr.number + ' of up to ' + pr.total + '</h3><span class="badge">' + esc(pr.concept.name) + '</span></div>'
-      + '<p class="muted small">A one-step question on the suspected concept only. It does not reveal the answer to your problem.</p>'
+    const weak = session.diagnosis && session.diagnosis.confidence < 0.6;
+    return '<form class="card stack" data-form="probe" style="--gap-y:12px"><div class="row between"><h3>' + (weak ? 'Follow-up question' : 'Diagnostic check') + ' ' + pr.number + ' of up to ' + pr.total + '</h3><span class="badge">' + esc(pr.concept.name) + '</span></div>'
+      + (weak ? '<div class="notice warn">' + ui.icon('info') + '<p class="small"><strong>Not sure yet.</strong> The evidence from your answer is weak (' + ui.pct(session.diagnosis.confidence) + '%), so I cannot tell what is missing. This question checks the most likely concept before anything is taught.</p></div>' : '<p class="muted small">A one-step question on the suspected concept only. It does not reveal the answer to your problem.</p>')
       + '<p class="math problem-text">' + fmt(pr.mcq.q) + '</p>' + mcq('opt', pr.mcq)
       + '<div><button class="btn primary" type="submit" data-fk="probe-submit">Submit probe answer</button></div></form>';
   }
@@ -96,6 +101,10 @@
 
   function answerBox(idPrefix, problem, draftKey, extra) {
     const a = problem.answer;
+    if (a.kind === 'open') {
+      return '<div class="field"><label for="' + idPrefix + '-ans">Your answer</label><textarea class="textarea prose" id="' + idPrefix + '-ans" name="answer" maxlength="1500" placeholder="Write your answer in your own words" data-draft="ans:' + esc(draftKey) + '" aria-describedby="' + idPrefix + '-hint ' + idPrefix + '-err" required></textarea><div class="hint" id="' + idPrefix + '-hint">Open-ended answers are judged by Gemini (or the demo rubric). That is an AI judgement, not a verified result.</div><div class="error-text" id="' + idPrefix + '-err" role="alert">' + esc(extra || '') + '</div></div>'
+        + '<div class="field"><label for="' + idPrefix + '-wrk">Your reasoning <span class="faint">(optional but it sharpens the diagnosis)</span></label><textarea class="textarea prose" id="' + idPrefix + '-wrk" name="working" maxlength="1500" placeholder="How did you get there?" data-draft="wrk:' + esc(draftKey) + '"></textarea></div>';
+    }
     const hint = a.kind === 'expr' ? 'An expression in x. Use ^ for powers and brackets for functions, for example 2x cos(x^2).' : (a.unit ? 'A number with its unit, for example 2.5 ' + a.unit + '.' : 'A number' + (a.percentOk ? ' or a percentage.' : '.'));
     return '<div class="field"><label for="' + idPrefix + '-ans">Final answer</label><input class="input mono" id="' + idPrefix + '-ans" name="answer" autocomplete="off" spellcheck="false" maxlength="120" data-draft="ans:' + esc(draftKey) + '" aria-describedby="' + idPrefix + '-hint ' + idPrefix + '-err" required><div class="hint" id="' + idPrefix + '-hint">' + esc(hint) + '</div><div class="error-text" id="' + idPrefix + '-err" role="alert">' + esc(extra || '') + '</div></div>'
       + '<div class="field"><label for="' + idPrefix + '-wrk">Working steps <span class="faint">(optional but it helps the diagnosis)</span></label><textarea class="textarea" id="' + idPrefix + '-wrk" name="working" maxlength="1500" spellcheck="false" placeholder="Write your steps, one per line" data-draft="wrk:' + esc(draftKey) + '"></textarea></div>';
@@ -107,7 +116,9 @@
     return '<form class="card stack" data-form="verify" style="--gap-y:14px"><div class="row between"><h3 id="stage-title" tabindex="-1">Fresh verification problem</h3><span class="badge sage">new numbers</span></div>' + stepper('verify')
       + '<p class="muted small">This tests the same concept in a new setting. ' + (n ? 'Attempts so far: ' + n + '.' : '') + '</p>'
       + '<p class="problem-text math">' + fmt(vp.statement) + '</p>'
-      + answerBox('v', vp, 'v:' + session.id + ':' + session.verification.seed, ui.vError)
+      + (vp.answer.kind === 'choice'
+        ? mcq('opt', MT.flow.presentMCQ({ q: '', options: vp.answer.options }, session.id + ':v:' + session.verification.seed)) + '<div class="error-text" role="alert">' + esc(ui.vError || '') + '</div>'
+        : answerBox('v', vp, 'v:' + session.id + ':' + session.verification.seed, ui.vError))
       + '<div><button class="btn primary" type="submit" data-fk="verify-submit">Submit for verification</button></div></form>';
   }
 
@@ -126,6 +137,14 @@
   function solvedCard(session) {
     const problem = MT.flow.originalProblem(session);
     const r = session.result || {};
+    if (problem.answer.kind === 'open') {
+      const d = session.diagnosis;
+      return '<div class="card stack" style="--gap-y:12px"><div class="row between"><h3 id="stage-title" tabindex="-1">Correct</h3><span class="badge verify"><span class="dot"></span>AI-judged</span></div>'
+        + '<p>' + (d.engine === 'demo-rubric' ? 'The demo rubric accepted this answer.' : 'Gemini judged this answer correct.') + ' <strong>This is a judgement, not a deterministically verified result.</strong></p>'
+        + '<ul class="steps">' + d.evidence.map((e) => '<li>' + fmt(e) + '</li>').join('') + '</ul>'
+        + (r.targetAfter != null ? '<p class="muted small">Target concept estimate: <span class="mono">' + ui.f2(r.targetBefore) + ' to ' + ui.f2(r.targetAfter) + '</span>.</p>' : '')
+        + '<div class="row"><a class="btn primary" href="' + ui.link('map', { track: session.trackId }) + '">See the knowledge map</a><a class="btn" href="' + ui.link('ask') + '">Ask another question</a></div></div>';
+    }
     return '<div class="card stack" style="--gap-y:12px"><div class="row between"><h3 id="stage-title" tabindex="-1">Correct</h3><span class="badge mastered"><span class="dot"></span>Verified correct</span></div>'
       + '<p>The answer was checked by deterministic comparison against the verified result' + (r.targetAfter != null ? '. Target concept estimate: <span class="mono">' + ui.f2(r.targetBefore) + ' to ' + ui.f2(r.targetAfter) + '</span>.' : '.') + '</p>'
       + (ui.store.settings().showSolution ? '<div><p class="label">Worked solution</p><ol class="steps math">' + problem.solution.map((s) => '<li>' + fmt(s) + '</li>').join('') + '</ol></div>' : '<p class="muted small">Worked solution hidden in your learning preferences.</p>')

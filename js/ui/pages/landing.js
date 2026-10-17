@@ -16,7 +16,7 @@
   function render() {
     const signedIn = !!ui.store.profile();
     const track = MT.data.track('eee-transformers');
-    const domains = MT.data.domains.map((d) => {
+    const domains = MT.data.domains.filter((d) => !d.dynamic).map((d) => {
       const ts = MT.data.tracksFor(d.id);
       return '<li class="domain"><div class="row between"><h3>' + esc(d.name) + '</h3><span class="badge">' + esc(d.exam) + '</span></div><p class="muted">' + esc(d.blurb) + '</p>'
         + (ts.length ? '<p class="faint small">Included: ' + ts.map((t) => esc(t.topic)).join(', ') + '</p>' : '<p class="faint small">Track pending</p>') + '</li>';
@@ -67,12 +67,13 @@
       + '<li><strong>Safe answer checking.</strong> Numbers, units and algebraic expressions are parsed without eval and compared numerically.</li>'
       + '<li><strong>Fresh verification.</strong> Generated problems with new numbers, graded the same way as the original.</li>'
       + '<li><strong>Progress analytics.</strong> Mastery over time, recovery success, repeated misconceptions and weakest prerequisites.</li>'
+      + '<li><strong>Ask anything.</strong> Type any question from any subject. With your own Gemini key, MINDTRACE builds a prerequisite map for it, judges your open-ended answer, asks a follow-up when it is unsure, and verifies learning with a fresh question. A scripted demo question works without a key.</li>'
       + '<li><strong>Judge demo.</strong> A guided run of the whole loop with the fixture clearly labelled.</li></ul></section>'
 
       + '<section id="honest" class="section container" aria-labelledby="h-real"><h2 id="h-real" class="h2">What is real and what is simulated</h2>'
       + '<div class="card elev stack"><p><strong>Diagnosis engine.</strong> Rule-based and deterministic by default. Each result is labelled with the engine that produced it. Optionally, you can add your own Gemini key in Settings so unrecognised answers get an AI reading; that path is schema-validated but has not been exercised against the live API in this build.</p>'
       + '<p><strong>Accounts and data.</strong> Profiles are local to this browser and have no password. There is no server or database yet. Real authentication and storage are on the roadmap.</p>'
-      + '<p><strong>Content.</strong> ' + MT.data.tracks.length + ' hand-authored tracks with one to two original problems each, and generated verification variants. This is a seed for the format, not a full syllabus.</p></div></section>'
+      + '<p><strong>Content.</strong> ' + MT.data.tracks.length + ' hand-authored tracks with one to two original problems each, and generated verification variants. This is a seed for the format, not a full syllabus. Maps for questions you ask are written by Gemini, validated, and not reviewed by a person.</p></div></section>'
 
       + '<section class="section container cta"><h2 class="h2">See the whole loop in about three minutes</h2><p class="muted">The judge demo walks a wrong answer through diagnosis, a probe, recovery, a fresh verification problem and the updated graph.</p>'
       + '<div class="row"><button class="btn primary lg" type="button" data-action="start-demo">Start the judge demo</button><a class="btn lg" href="#/signin">Create a profile</a></div></section>'

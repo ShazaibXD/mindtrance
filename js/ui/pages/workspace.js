@@ -53,11 +53,11 @@
       return '<div class="card stack" style="--gap-y:10px"><h2 class="h3">Your attempt</h2><div><p class="label">Final answer</p><pre class="quote">' + esc(s.attempt.answer) + '</pre></div>' + (s.attempt.working.trim() ? '<div><p class="label">Working</p><pre class="quote">' + esc(s.attempt.working) + '</pre></div>' : '') + '</div>';
     }
     const draftKey = ctx.track.id + ':' + ctx.def.id;
-    const demoBtn = store.profile().demo && !locked.length ? '<button class="btn sm" type="button" data-action="demo-fill" data-fk="demo-fill">Fill in the demo wrong attempt</button>' : '';
+    const demoBtn = store.profile().demo && !ctx.track.custom && !locked.length ? '<button class="btn sm" type="button" data-action="demo-fill" data-fk="demo-fill">Fill in the demo wrong attempt</button>' : '';
     return '<form class="card stack" data-form="attempt" novalidate style="--gap-y:14px"><h2 class="h3">Your attempt</h2>' + lockBanner
       + ui.answerBox('a', problem, draftKey, ui.wsError)
       + '<div class="row"><button class="btn primary" type="submit" data-fk="attempt-submit"' + (locked.length || ui.busy ? ' aria-disabled="true" disabled' : '') + '>' + (ui.busy ? '<span class="spin" aria-hidden="true"></span>Reading your work' : 'Submit attempt') + '</button>' + demoBtn + '</div>'
-      + (ui.busy ? '<p class="hint" role="status">Asking Gemini about an answer the rule-based engine did not recognise.</p>' : '') + '</form>';
+      + (ui.busy ? '<p class="hint" role="status">Asking Gemini to read your answer.</p>' : '') + '</form>';
   }
 
   function render(route) {
@@ -115,16 +115,28 @@
     if (MT.flow.lockedBy(ui.store, ctx.track.id, ctx.def.id).length) { ui.toast('This problem is locked until the gap is repaired.', 'bad'); return; }
 
     let override;
+    let judgement;
     let aiNote = '';
     const cfg = ui.store.settings();
-    if (cfg.useGemini && cfg.geminiKey && pre.matchedBy === 'fallback' && pre.category !== 'CORRECT') {
+    if (problem.answer.kind === 'open') {
+      if (ctx.track.source === 'fixture') {
+        judgement = MT.custom.fixtureJudge(answer + ' ' + working);
+      } else {
+        if (!cfg.geminiKey) { ui.wsError = 'Judging an open-ended answer needs a Gemini key. Add one in Settings.'; ui.focusAfter = '#a-ans'; ui.render(); return; }
+        ui.busy = true; ui.render();
+        const r = await MT.ai.judgeOpen({ apiKey: cfg.geminiKey }, ctx.track, ctx.track.question, answer, working);
+        ui.busy = false;
+        if (!r.ok) { ui.wsError = r.error; ui.focusAfter = '#a-ans'; ui.render(); return; }
+        judgement = r.value;
+      }
+    } else if (cfg.useGemini && cfg.geminiKey && pre.matchedBy === 'fallback' && pre.category !== 'CORRECT') {
       ui.busy = true; ui.render();
       const r = await MT.ai.classify({ apiKey: cfg.geminiKey }, ctx.track, problem, answer, working);
       ui.busy = false;
       if (r.ok) override = r.value; else aiNote = '<p class="small">' + esc(r.error) + '</p>';
     }
     const session = MT.flow.startSession(ui.store, ctx.track.id, ctx.def.id);
-    const res = MT.flow.submitAttempt(ui.store, session.id, answer, working, { override });
+    const res = MT.flow.submitAttempt(ui.store, session.id, answer, working, { override, judgement });
     if (!res.ok) { ui.wsError = res.error; ui.render(); return; }
     if (aiNote) note('info', '<strong>Gemini was not used.</strong>' + aiNote);
     else if (override) note('info', '<strong>The rule-based engine had no signature for this answer, so Gemini classified it.</strong><p class="small">Its output was validated against the schema and the knowledge graph. Correctness was still checked deterministically.</p>');
@@ -172,11 +184,12 @@
   ui.forms.verify = (form) => {
     const ctx = context(ui.route);
     const s = ctx.session;
-    const answer = form.elements.answer.value;
+    const choice = form.elements.opt;
+    const answer = choice ? choice.value : form.elements.answer.value;
     ui.vError = '';
-    const r = MT.flow.submitVerification(ui.store, s.id, answer, form.elements.working.value);
+    const r = MT.flow.submitVerification(ui.store, s.id, answer, form.elements.working ? form.elements.working.value : '');
     if (!r.ok) { ui.vError = r.error; ui.focusAfter = '#v-ans'; ui.render(); return; }
-    ui.drafts['ans:v:' + s.id + ':' + s.verification.seed] = '';
+    if (!choice) ui.drafts['ans:v:' + s.id + ':' + s.verification.seed] = '';
     const nm = esc(cname(s, s.gap.conceptId));
     if (r.outcome === 'VERIFIED') note('good', '<strong>Verified.</strong><p class="small">Estimate ' + ui.f2(r.before) + ' to ' + ui.f2(r.after) + '.</p>');
     else if (r.outcome === 'NEEDS_MORE') note('info', '<strong>Correct, but one success is not enough yet.</strong><p class="small">The estimate for ' + nm + ' is ' + ui.f2(r.after) + ', below 0.80. Here is another fresh problem.</p>');

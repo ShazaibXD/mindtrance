@@ -9,8 +9,9 @@
   function render() {
     const store = ui.store;
     const f = ui.exploreFilter;
-    const chips = [['all', 'All domains']].concat(MT.data.domains.map((d) => [d.id, d.name])).map(([id, name]) => '<button class="chip" type="button" data-action="explore-filter" data-id="' + esc(id) + '" aria-pressed="' + (f === id) + '" data-fk="chip-' + esc(id) + '">' + esc(name) + '</button>').join('');
-    const domains = MT.data.domains.filter((d) => f === 'all' || f === d.id).map((d) => {
+    const shown = MT.data.domains.filter((d) => !d.dynamic || MT.data.tracksFor(d.id).length);
+    const chips = [['all', 'All domains']].concat(shown.map((d) => [d.id, d.name])).map(([id, name]) => '<button class="chip" type="button" data-action="explore-filter" data-id="' + esc(id) + '" aria-pressed="' + (f === id) + '" data-fk="chip-' + esc(id) + '">' + esc(name) + '</button>').join('');
+    const domains = shown.filter((d) => f === 'all' || f === d.id).map((d) => {
       const tracks = MT.data.tracksFor(d.id);
       return '<section class="stack" style="--gap-y:12px" aria-labelledby="d-' + esc(d.id) + '"><div><h2 id="d-' + esc(d.id) + '" class="h2" style="margin-bottom:2px">' + esc(d.name) + '</h2><p class="muted small">' + esc(d.blurb) + '</p></div>'
         + (tracks.length ? tracks.map((t) => {

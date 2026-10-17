@@ -166,3 +166,6 @@ details > summary { cursor: pointer; }
 .chip { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); cursor: pointer; font-weight: 550; }
 .chip:hover { color: var(--text); border-color: var(--text-3); }
 .chip[aria-pressed='true'] { background: var(--elev); color: var(--text); border-color: var(--gold); }
+
+/* ---------- ask anything ---------- */
+.textarea.prose { font-family: var(--font-ui); font-size: 15px; min-height: 96px; }
