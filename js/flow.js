@@ -83,6 +83,15 @@
     let res = MT.diagnose.diagnose(track, problem, answer, working, mastery);
     if (res.category === 'INVALID_INPUT') return { ok: false, error: res.reason };
 
+    if (problem.answer.kind === 'open') {
+      // No deterministic checker exists for open-ended answers: the judgement (AI or demo rubric) decides, and says so.
+      const j = opts && opts.judgement;
+      if (!j) return { ok: false, error: 'This answer needs a judgement before it can be diagnosed.' };
+      if (j.isCorrect) res = { engine: j.engine, category: 'CORRECT', confidence: j.confidence, evidence: j.evidence, matchedBy: j.matchedBy || 'ai', hintConcept: null, candidates: [] };
+      else res = applyOverride(track, res, j, mastery);
+      res.judged = true;
+    }
+
     const override = opts && opts.override;
     if (override && res.matchedBy === 'fallback' && res.category !== 'CORRECT') res = applyOverride(track, res, override, mastery);
 
@@ -132,7 +141,7 @@
   function applyOverride(track, res, ov, mastery) {
     const gr = MT.graph.build(track);
     const out = Object.assign({}, res, {
-      engine: ov.engine || 'gemini', category: ov.category, confidence: ov.confidence, evidence: ov.evidence, matchedBy: 'ai',
+      engine: ov.engine || 'gemini', category: ov.category, confidence: ov.confidence, evidence: ov.evidence, matchedBy: ov.matchedBy || 'ai',
       hintConcept: gr.byId.has(ov.hintConcept) ? ov.hintConcept : null,
     });
     if (out.category === 'PREREQUISITE_GAP' || out.category === 'CONCEPT_MISCONCEPTION') {
@@ -233,7 +242,16 @@
   function pickVerification(store, session) {
     const track = trackOf(session);
     const n = session.verification ? session.verification.issued : 0;
-    const def = track.verification[n % track.verification.length];
+    // Prefer a question that tests the concept being recovered (custom tracks tag each one).
+    const gapId = session.gap && session.gap.conceptId;
+    const tagged = track.verification.filter((t) => t.concept);
+    let pool = track.verification;
+    if (tagged.length) {
+      pool = tagged.filter((t) => t.concept === gapId);
+      if (!pool.length) pool = tagged.filter((t) => t.concept === track.target);
+      if (!pool.length) pool = tagged;
+    }
+    const def = pool[n % pool.length];
     const original = originalProblem(session).statement;
     let seed = (store.now() % 100000) + n * 7919;
     let tries = 0;

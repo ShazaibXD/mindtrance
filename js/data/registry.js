@@ -10,7 +10,8 @@
     { id: 'jee-maths', name: 'JEE Mathematics', exam: 'JEE', blurb: 'Calculus, algebra and coordinate geometry.' },
     { id: 'neet-biology', name: 'NEET Biology', exam: 'NEET', blurb: 'Genetics, physiology and ecology for NEET UG.' },
     { id: 'gate-cs', name: 'GATE Computer Science', exam: 'GATE', blurb: 'Networks, algorithms, systems and theory.' },
-    { id: 'engineering', name: 'First-year Engineering', exam: 'B.Tech', blurb: 'Foundation subjects such as basic electrical engineering.' },
+    { id: 'engineering', name: 'First-year Engineering', exam: 'B.Tech', blurb: 'Foundation subjects such as basic electrical engineering and computing.' },
+    { id: 'ask', name: 'Your questions', exam: 'Any subject', blurb: 'Maps built from questions you asked.', dynamic: true },
   ];
   const tracks = [];
 
@@ -20,10 +21,17 @@
     tracks.push(track);
   }
 
+  /* Replace the set of custom (student-asked) tracks. Built-in tracks are untouched. */
+  function setCustom(list) {
+    for (let i = tracks.length - 1; i >= 0; i--) if (tracks[i].custom) tracks.splice(i, 1);
+    for (const t of list) tracks.push(t);
+  }
+
   const data = {
     domains,
     tracks,
     register,
+    setCustom,
     track: (id) => tracks.find((t) => t.id === id) || null,
     tracksFor: (domainId) => tracks.filter((t) => t.domainId === domainId),
     problem(trackId, problemId) {
@@ -32,8 +40,9 @@
     },
     /* Instantiate a problem or verification template with a seed. */
     instantiate(def, seed) {
-      const p = Object.assign({ id: def.id, title: def.title, seed }, def.gen(MT.rng.create(seed)));
+      const p = Object.assign({ id: def.id, title: def.title, seed, concept: def.concept }, def.gen(MT.rng.create(seed)));
       // A wrong-answer signature that coincides with the correct answer would misgrade a right answer.
+      if (p.answer.kind === 'open' || p.answer.kind === 'choice') return p;
       p.patterns = (p.patterns || []).filter((pat) => (p.answer.kind === 'expr'
         ? !MT.expr.exprEquivalent(pat.expr, p.answer.expr)
         : !MT.expr.close(pat.value, p.answer.value, p.answer)));

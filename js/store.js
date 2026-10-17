@@ -28,6 +28,7 @@
     mastery: {},
     events: [],
     sessions: {},
+    customs: {},
     seq: 1,
   });
 
@@ -60,8 +61,17 @@
     const data = () => {
       const p = profile();
       if (!p) throw new Error('No active profile');
+      if (!p.data.customs) p.data.customs = {}; // saves from before custom questions existed
       return p.data;
     };
+
+    /* Make the active profile's own questions available as tracks (and hide other profiles' ones). */
+    function syncCustom() {
+      if (!MT.custom || !MT.data) return;
+      const p = profile();
+      const entries = p && p.data.customs ? Object.values(p.data.customs) : [];
+      MT.data.setCustom(entries.map((e) => MT.custom.buildTrack(e)));
+    }
 
     /* ---------- profiles ---------- */
     function validateName(name) {
@@ -80,6 +90,7 @@
       const id = 'p' + now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
       root.profiles[id] = Object.assign({ id, name: v.name, createdAt: now(), demo: false, data: blankData() }, extra || {});
       root.active = id;
+      syncCustom();
       commit();
       return { ok: true, id };
     }
@@ -87,6 +98,7 @@
     function signIn(id) {
       if (!root.profiles[id]) return { ok: false, error: 'That profile no longer exists.' };
       root.active = id;
+      syncCustom();
       commit();
       return { ok: true };
     }
@@ -100,10 +112,11 @@
       commit();
       return { ok: true };
     }
-    function signOut() { root.active = null; commit(); }
+    function signOut() { root.active = null; syncCustom(); commit(); }
     function deleteProfile(id) {
       delete root.profiles[id];
       if (root.active === id) root.active = null;
+      syncCustom();
       commit();
     }
 
@@ -216,12 +229,35 @@
     function updateSettings(patch) { Object.assign(data().settings, patch); commit(); }
     function resetProgress() {
       const p0 = profile();
-      if (p0) { p0.data = blankData(); commit(); }
+      if (p0) { p0.data = blankData(); syncCustom(); commit(); }
+    }
+
+    /* ---------- custom questions ---------- */
+    function addCustomTrack(entry) {
+      const d = data();
+      const id = MT.custom.makeId(entry.question);
+      if (!d.customs[id]) {
+        d.customs[id] = { id, spec: entry.spec, question: entry.question, source: entry.source || 'gemini', createdAt: now() };
+        syncCustom();
+        commit();
+      }
+      return id;
+    }
+    function removeCustomTrack(id) {
+      const d = data();
+      delete d.customs[id];
+      for (const [sid, s] of Object.entries(d.sessions)) if (s.trackId === id) delete d.sessions[sid];
+      for (const k of Object.keys(d.mastery)) if (k.startsWith(id + ':')) delete d.mastery[k];
+      d.events = d.events.filter((e) => e.trackId !== id);
+      syncCustom();
+      commit();
     }
     function exportData() { const p0 = profile(); return p0 ? JSON.stringify({ exportedAt: now(), name: p0.name, data: Object.assign({}, p0.data, { settings: Object.assign({}, p0.data.settings, { geminiKey: '' }) }) }, null, 2) : '{}'; }
 
+    syncCustom();
+
     return {
-      persistent, now,
+      persistent, now, addCustomTrack, removeCustomTrack, customTracks: () => (profile() ? Object.values(data().customs) : []),
       subscribe: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
       profiles: () => Object.values(root.profiles), profile, validateName, signUp, signIn, signOut, deleteProfile, renameProfile,
       data, p, record, masteryMap, observe, learn, conceptState, graphState, addEvent, commit,

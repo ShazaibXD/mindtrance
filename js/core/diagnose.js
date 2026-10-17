@@ -17,6 +17,17 @@
   /* Compare a student answer with the verified answer and every known error signature. */
   function checkAnswer(problem, answerText) {
     const a = problem.answer;
+    if (a.kind === 'choice') {
+      const t = String(answerText).trim();
+      if (!/^[0-2]$/.test(t)) return { ok: false, reason: 'Choose one of the options.' };
+      return { ok: true, correct: Number(t) === a.correct, matchPattern: () => false, value: null };
+    }
+    if (a.kind === 'open') {
+      const t = String(answerText).trim();
+      if (t.length < 3) return { ok: false, reason: 'Write an answer in your own words.' };
+      if (t.length > 1500) return { ok: false, reason: 'That answer is too long. Keep it under 1500 characters.' };
+      return { ok: true, open: true, correct: false, matchPattern: () => false, value: null };
+    }
     if (a.kind === 'expr') {
       if (!MT.expr.exprParses(answerText)) return { ok: false, reason: 'Could not read that as an expression. Use x, + - * / ^, and functions such as sin(x) with brackets.' };
       return {
@@ -64,7 +75,17 @@
     const working = String(workingText || '');
     const base = { engine: 'rule-based', category: null, confidence: 0, evidence: [], hintConcept: null, matchedBy: null };
     if (!chk.ok) return Object.assign(base, { category: 'INVALID_INPUT', reason: chk.reason });
+    if (chk.open) {
+      // Open-ended answers have no deterministic checker: the caller must supply a judgement (AI or demo rubric).
+      return Object.assign(base, { category: 'PREREQUISITE_GAP', confidence: 0, matchedBy: 'fallback', needsJudge: true, evidence: ['This open-ended answer needs a judgement before it can be diagnosed.'] });
+    }
     if (chk.correct) return Object.assign(base, { category: 'CORRECT', confidence: 1, matchedBy: 'verified', evidence: ['The answer was checked against the verified result by deterministic comparison.'] });
+    if (problem.answer.kind === 'choice') {
+      return Object.assign(base, {
+        category: 'PREREQUISITE_GAP', confidence: 0.7, matchedBy: 'choice', hintConcept: problem.concept || null,
+        evidence: ['A wrong option was chosen on a question that tests this concept.'],
+      });
+    }
     if (chk.dimension) {
       return Object.assign(base, {
         category: 'UNIT_ERROR', confidence: 0.7, matchedBy: 'generic', hintConcept: slipConcept(track),
