@@ -133,3 +133,15 @@
 .ws .gv { height: 340px; }
 details > summary { cursor: pointer; }
 @media (max-width: 1000px) { .ws { grid-template-columns: 1fr; } .selectors { grid-template-columns: 1fr; } }
+
+/* ---------- map ---------- */
+.mapgrid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
+.mapgrid .gv { height: min(620px, 70vh); }
+.legend { display: grid; gap: 8px; margin-top: 10px; }
+.legend li { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.legend-line { display: inline-block; width: 22px; height: 0; border-top: 3px solid; vertical-align: middle; margin: 0 4px 0 10px; }
+.legend-line.up { border-color: var(--sage); }
+.legend-line.down { border-color: var(--gold); }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--sage); font-weight: 600; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+.linkbtn:hover { color: var(--text); }
+@media (max-width: 1000px) { .mapgrid { grid-template-columns: 1fr; } }

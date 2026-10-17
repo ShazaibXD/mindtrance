@@ -142,13 +142,13 @@
     svg.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
       drag = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty, moved: false };
-      svg.setPointerCapture(e.pointerId);
     });
     svg.addEventListener('pointermove', (e) => {
       if (!drag) return;
       const dx = e.clientX - drag.x;
       const dy = e.clientY - drag.y;
       if (!drag.moved && Math.hypot(dx, dy) < 5) return;
+      if (!drag.moved) svg.setPointerCapture(e.pointerId); // capture only once it is a real drag, so plain clicks still reach nodes
       drag.moved = true;
       view.tx = drag.tx + dx; view.ty = drag.ty + dy; view.touched = true;
       svg.classList.add('panning');
