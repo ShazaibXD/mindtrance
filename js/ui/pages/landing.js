@@ -72,7 +72,7 @@
       + '<section id="honest" class="section container" aria-labelledby="h-real"><h2 id="h-real" class="h2">What is real and what is simulated</h2>'
       + '<div class="card elev stack"><p><strong>Diagnosis engine.</strong> Rule-based and deterministic by default. Each result is labelled with the engine that produced it. Optionally, you can add your own Gemini key in Settings so unrecognised answers get an AI reading; that path is schema-validated but has not been exercised against the live API in this build.</p>'
       + '<p><strong>Accounts and data.</strong> Profiles are local to this browser and have no password. There is no server or database yet. Real authentication and storage are on the roadmap.</p>'
-      + '<p><strong>Content.</strong> Six hand-authored tracks with one to two original problems each, and generated verification variants. This is a seed for the format, not a full syllabus.</p></div></section>'
+      + '<p><strong>Content.</strong> ' + MT.data.tracks.length + ' hand-authored tracks with one to two original problems each, and generated verification variants. This is a seed for the format, not a full syllabus.</p></div></section>'
 
       + '<section class="section container cta"><h2 class="h2">See the whole loop in about three minutes</h2><p class="muted">The judge demo walks a wrong answer through diagnosis, a probe, recovery, a fresh verification problem and the updated graph.</p>'
       + '<div class="row"><button class="btn primary lg" type="button" data-action="start-demo">Start the judge demo</button><a class="btn lg" href="#/signin">Create a profile</a></div></section>'
