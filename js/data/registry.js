@@ -32,7 +32,12 @@
     },
     /* Instantiate a problem or verification template with a seed. */
     instantiate(def, seed) {
-      return Object.assign({ id: def.id, title: def.title, seed }, def.gen(MT.rng.create(seed)));
+      const p = Object.assign({ id: def.id, title: def.title, seed }, def.gen(MT.rng.create(seed)));
+      // A wrong-answer signature that coincides with the correct answer would misgrade a right answer.
+      p.patterns = (p.patterns || []).filter((pat) => (p.answer.kind === 'expr'
+        ? !MT.expr.exprEquivalent(pat.expr, p.answer.expr)
+        : !MT.expr.close(pat.value, p.answer.value, p.answer)));
+      return p;
     },
   };
 
