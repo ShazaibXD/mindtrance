@@ -1,0 +1,11 @@
+{
+  "name": "mindtrace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MINDTRACE: find the gap, fix the foundation. Static HTML/CSS/JS learning diagnostic prototype.",
+  "scripts": {
+    "test": "node --test tests/",
+    "serve": "python3 -m http.server 4173"
+  },
+  "license": "MIT"
+}
