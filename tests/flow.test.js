@@ -226,3 +226,11 @@ test('nextAction prefers an open session, then recovery, then a new problem', ()
   store.observe(T, 'ohms_law', false, {});
   assert.equal(F.nextAction(store).kind, 'recover');
 });
+
+test('exam focus steers the recommended problem', () => {
+  const store = fresh();
+  store.updateSettings({ examFocus: 'gate-cs' });
+  assert.equal(F.nextAction(store).trackId, 'gate-subnet');
+  store.updateSettings({ examFocus: '' });
+  assert.equal(F.nextAction(store).trackId, 'eee-transformers');
+});

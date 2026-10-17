@@ -121,3 +121,22 @@ test('subscribers are notified on changes', () => {
   s.observe(T, 'ohms_law', true, {});
   assert.equal(n, 1);
 });
+
+test('renaming validates and rejects another profile name', () => {
+  const s = mk(); s.signUp('Asha'); s.signUp('Bilal');
+  assert.equal(s.renameProfile('B').ok, false);
+  assert.equal(s.renameProfile('asha').ok, false);
+  assert.equal(s.renameProfile('Bilal Khan').ok, true);
+  assert.equal(s.profile().name, 'Bilal Khan');
+});
+
+test('settings from older saves are merged over current defaults', () => {
+  const storage = mem();
+  const s1 = mk(storage); s1.signUp('Asha');
+  delete s1.data().settings.showSolution;
+  s1.commit();
+  const s2 = mk(storage);
+  assert.equal(s2.settings().showSolution, true);
+  s2.updateSettings({ showSolution: false });
+  assert.equal(s2.settings().showSolution, false);
+});

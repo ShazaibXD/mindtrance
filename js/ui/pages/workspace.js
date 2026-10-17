@@ -67,7 +67,7 @@
     const store = ui.store;
     const note = ui.stageNote;
     const focusId = ctx.session && ctx.session.gap ? ctx.session.gap.conceptId : (ctx.session && ctx.session.diagnosis && ctx.session.diagnosis.candidates && ctx.session.diagnosis.candidates[ctx.session.probeIndex || 0] ? ctx.session.diagnosis.candidates[ctx.session.probeIndex || 0].id : ctx.track.target);
-    return '<div class="page-head"><div><p class="eyebrow">Problem workspace</p><h1 id="page-title" class="h1">' + esc(ctx.def.title) + '</h1></div><div class="row"><span class="badge gold">' + esc(ctx.track.exam) + '</span><span class="badge">' + esc(ctx.track.subject) + '</span><span class="badge">' + esc(ctx.def.difficulty) + '</span></div></div>'
+    return '<div class="page-head"><div><p class="eyebrow">Problem workspace</p><h1 id="page-title" class="h1">' + fmt(ctx.def.title) + '</h1></div><div class="row"><span class="badge gold">' + esc(ctx.track.exam) + '</span><span class="badge">' + esc(ctx.track.subject) + '</span><span class="badge">' + esc(ctx.def.difficulty) + '</span></div></div>'
       + '<div class="ws"><div class="stack" style="--gap-y:16px">' + selectors(ctx)
       + '<section class="card" aria-labelledby="prob-h"><p class="eyebrow" id="prob-h">Problem</p><p class="problem-text math">' + fmt(problem.statement) + '</p></section>'
       + attemptCard(ctx, problem) + '</div>'

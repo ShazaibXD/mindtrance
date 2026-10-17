@@ -128,7 +128,7 @@
     const r = session.result || {};
     return '<div class="card stack" style="--gap-y:12px"><div class="row between"><h3 id="stage-title" tabindex="-1">Correct</h3><span class="badge mastered"><span class="dot"></span>Verified correct</span></div>'
       + '<p>The answer was checked by deterministic comparison against the verified result' + (r.targetAfter != null ? '. Target concept estimate: <span class="mono">' + ui.f2(r.targetBefore) + ' to ' + ui.f2(r.targetAfter) + '</span>.' : '.') + '</p>'
-      + '<div><p class="label">Worked solution</p><ol class="steps math">' + problem.solution.map((s) => '<li>' + fmt(s) + '</li>').join('') + '</ol></div>'
+      + (ui.store.settings().showSolution ? '<div><p class="label">Worked solution</p><ol class="steps math">' + problem.solution.map((s) => '<li>' + fmt(s) + '</li>').join('') + '</ol></div>' : '<p class="muted small">Worked solution hidden in your learning preferences.</p>')
       + '<div class="row"><a class="btn primary" href="' + ui.link('map', { track: session.trackId }) + '">See the knowledge map</a><a class="btn" href="' + ui.link('explore') + '">Pick another problem</a></div></div>';
   }
 

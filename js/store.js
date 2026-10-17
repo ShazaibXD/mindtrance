@@ -24,7 +24,7 @@
   }
 
   const blankData = () => ({
-    settings: { theme: 'dark', examFocus: '', showHints: true, geminiKey: '', useGemini: false },
+    settings: { theme: 'dark', examFocus: '', showSolution: true, geminiKey: '', useGemini: false },
     mastery: {},
     events: [],
     sessions: {},
@@ -91,6 +91,15 @@
       return { ok: true };
     }
 
+    function renameProfile(name) {
+      const v = validateName(name);
+      if (!v.ok) return v;
+      const me = profile();
+      if (Object.values(root.profiles).some((p) => p.id !== me.id && p.name.toLowerCase() === v.name.toLowerCase())) return { ok: false, error: 'Another local profile already uses that name.' };
+      me.name = v.name;
+      commit();
+      return { ok: true };
+    }
     function signOut() { root.active = null; commit(); }
     function deleteProfile(id) {
       delete root.profiles[id];
@@ -214,10 +223,10 @@
     return {
       persistent, now,
       subscribe: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
-      profiles: () => Object.values(root.profiles), profile, validateName, signUp, signIn, signOut, deleteProfile,
+      profiles: () => Object.values(root.profiles), profile, validateName, signUp, signIn, signOut, deleteProfile, renameProfile,
       data, p, record, masteryMap, observe, learn, conceptState, graphState, addEvent, commit,
       newSession, getSession, touch, sessionList, activeFor, closeSession,
-      settings: () => data().settings, updateSettings, resetProgress, exportData,
+      settings: () => Object.assign({}, blankData().settings, data().settings), updateSettings, resetProgress, exportData,
       events: () => data().events,
     };
   }

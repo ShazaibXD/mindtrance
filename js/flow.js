@@ -106,7 +106,7 @@
     MT.machine.transition(s, 'ERROR_CLASSIFIED', res.category, now);
     s.diagnosis = res;
     s.probeIndex = 0;
-    logEvent(store, s, 'ATTEMPT', { category: res.category, correct: false, conceptId: res.hintConcept || null });
+    logEvent(store, s, 'ATTEMPT', { category: res.category, correct: false, conceptId: res.hintConcept || null, matchedBy: res.matchedBy });
 
     let candidates = res.candidates || [];
     if (res.category === 'UNIT_ERROR' && res.hintConcept) {
@@ -321,13 +321,15 @@
   function nextAction(store) {
     const open = store.sessionList().find((s) => !s.closed && !['READY', 'ATTEMPT_CORRECT', 'MASTERY_VERIFIED'].includes(s.state));
     if (open) return { kind: 'continue', session: open };
-    for (const track of MT.data.tracks) {
+    const focus = store.settings().examFocus;
+    const ordered = MT.data.tracks.slice().sort((a, b) => (b.domainId === focus) - (a.domainId === focus));
+    for (const track of ordered) {
       const gs = store.graphState(track.id);
       const gap = track.concepts.filter((c) => gs[c.id].status === 'CONFIRMED_GAP').sort((a, b) => gs[a.id].p - gs[b.id].p)[0];
       if (gap) return { kind: 'recover', trackId: track.id, conceptId: gap.id };
     }
     const tried = new Set(store.sessionList().map((s) => s.trackId + ':' + s.problemId));
-    for (const track of MT.data.tracks) {
+    for (const track of ordered) {
       for (const p of track.problems) if (!tried.has(track.id + ':' + p.id)) return { kind: 'try', trackId: track.id, problemId: p.id };
     }
     const t = MT.data.tracks[0];

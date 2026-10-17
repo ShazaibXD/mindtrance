@@ -145,3 +145,24 @@ details > summary { cursor: pointer; }
 .linkbtn { background: none; border: 0; padding: 0; color: var(--sage); font-weight: 600; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
 .linkbtn:hover { color: var(--text); }
 @media (max-width: 1000px) { .mapgrid { grid-template-columns: 1fr; } }
+
+/* ---------- charts ---------- */
+.chart { width: 100%; height: auto; display: block; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .tick { fill: var(--text-3); font: 11px var(--font-mono); }
+.chart .thr { stroke: var(--text-3); stroke-dasharray: 4 4; }
+.chart .thr.ok, .chart .tick.ok { stroke: var(--mastered); fill: var(--mastered); }
+.chart .thr.bad, .chart .tick.bad { stroke: var(--gap); fill: var(--gap); }
+.chart .series { fill: none; stroke: var(--sage); stroke-width: 2.5; stroke-linejoin: round; }
+.chart .pt { fill: var(--bg); stroke: var(--sage); stroke-width: 2; }
+.strip { display: flex; flex-wrap: wrap; gap: 6px; }
+.cell { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 6px; font: 700 12px var(--font-mono); border: 1px solid var(--line-strong); }
+.cell.mastered { color: var(--mastered); background: var(--mastered-bg); border-color: var(--mastered); }
+.cell.verify { color: var(--verify); background: var(--verify-bg); border-color: var(--verify); }
+.cell.gap { color: var(--gap); background: var(--gap-bg); border-color: var(--gap); }
+
+/* ---------- explorer ---------- */
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent; color: var(--text-2); cursor: pointer; font-weight: 550; }
+.chip:hover { color: var(--text); border-color: var(--text-3); }
+.chip[aria-pressed='true'] { background: var(--elev); color: var(--text); border-color: var(--gold); }
