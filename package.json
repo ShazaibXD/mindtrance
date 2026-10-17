@@ -5,7 +5,11 @@
   "description": "MINDTRACE: find the gap, fix the foundation. Static HTML/CSS/JS learning diagnostic prototype.",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "serve": "python3 -m http.server 4173"
+    "serve": "python3 -m http.server 4173",
+    "test:e2e": "playwright test"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  }
 }

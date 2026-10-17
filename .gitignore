@@ -7,3 +7,5 @@ node_modules/
 .claude/
 .vscode/
 coverage/
+test-results/
+playwright-report/
