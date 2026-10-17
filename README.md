@@ -96,6 +96,7 @@ Use **Reset demo data** in the guide panel to start over.
 index.html          entry point
 css/                tokens, base, components, pages
 js/core/            bkt, expr, graph, diagnose, machine, rng, ai (pure logic, runs in Node)
+js/custom.js        validation and building of maps for student-asked questions, plus the demo fixture
 js/data/            registry and one file per knowledge track
 js/store.js         profiles, mastery, events, sessions (localStorage)
 js/flow.js          attempt, probe, recovery and verification orchestration
