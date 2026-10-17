@@ -143,6 +143,12 @@
     const fn = ui.forms[f.dataset.form];
     if (fn) fn(f, e);
   });
+  document.addEventListener('change', (e) => {
+    const el = e.target.closest('[data-change]');
+    if (!el) return;
+    const fn = ui.actions[el.dataset.change];
+    if (fn) fn(el, e);
+  });
   document.addEventListener('input', (e) => {
     const el = e.target;
     if (el.dataset && el.dataset.draft) ui.drafts[el.dataset.draft] = el.value;
