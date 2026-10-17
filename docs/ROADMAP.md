@@ -13,3 +13,9 @@
 - More tracks: first-year CSE, NEET Chemistry, JEE Maths calculus and algebra
 - Calibrate BKT parameters from real response data
 - Playwright end-to-end suite in CI
+
+## Known gaps in the prototype (carried from PROGRESS)
+- First-year CSE track (number systems, basic programming) is not authored yet
+- Automated browser interaction tests
+- Better edge routing in the graph for long dependencies
+- Verify the Gemini path against the live API behind a server-side proxy
