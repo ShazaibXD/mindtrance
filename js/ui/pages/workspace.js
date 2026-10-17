@@ -53,7 +53,7 @@
       return '<div class="card stack" style="--gap-y:10px"><h2 class="h3">Your attempt</h2><div><p class="label">Final answer</p><pre class="quote">' + esc(s.attempt.answer) + '</pre></div>' + (s.attempt.working.trim() ? '<div><p class="label">Working</p><pre class="quote">' + esc(s.attempt.working) + '</pre></div>' : '') + '</div>';
     }
     const draftKey = ctx.track.id + ':' + ctx.def.id;
-    const demoBtn = store.profile().demo && !ctx.track.custom && !locked.length ? '<button class="btn sm" type="button" data-action="demo-fill" data-fk="demo-fill">Fill in the demo wrong attempt</button>' : '';
+    const demoBtn = store.profile().demo && !ctx.track.custom && !locked.length ? '<button class="btn sm" type="button" data-action="demo-fill" data-fk="demo-fill">Fill in the demo wrong attempt</button>' + (ctx.track.id === 'eee-transformers' && ctx.def.id === 'tx-secondary-current' ? '<button class="btn sm" type="button" data-action="demo-fill-working" data-fk="demo-fill-working">Fill in with working</button>' : '') : '';
     return '<form class="card stack" data-form="attempt" novalidate style="--gap-y:14px"><h2 class="h3">Your attempt</h2>' + lockBanner
       + ui.answerBox('a', problem, draftKey, ui.wsError)
       + '<div class="row"><button class="btn primary" type="submit" data-fk="attempt-submit"' + (locked.length || ui.busy ? ' aria-disabled="true" disabled' : '') + '>' + (ui.busy ? '<span class="spin" aria-hidden="true"></span>Reading your work' : 'Submit attempt') + '</button>' + demoBtn + '</div>'
@@ -86,9 +86,10 @@
 
   /* ---------- helpers ---------- */
   const sessionLink = (id) => ui.link('workspace', { session: id });
-  const fixture = (track, problem) => {
+  const fixture = (track, problem, withWorking) => {
     if (track.id === 'eee-transformers' && problem.id === 'tx-secondary-current') {
-      return { answer: '200 A', working: 'N1/N2 = 10\nV2 = V1 x N1/N2 = 240 x 10 = 2400 V\nI2 = V2/RL = 2400/12 = 200 A' };
+      // Final answer only: a bare wrong answer is weak evidence, so the app asks a question before diagnosing.
+      return withWorking ? { answer: '200 A', working: 'N1/N2 = 10\nV2 = V1 x N1/N2 = 240 x 10 = 2400 V\nI2 = V2/RL = 2400/12 = 200 A' } : { answer: '200 A', working: '' };
     }
     const p = MT.data.instantiate(problem, MT.flow.ORIGINAL_SEED);
     const pat = p.patterns.find((x) => x.cat === 'PREREQUISITE_GAP') || p.patterns[0];
@@ -209,9 +210,10 @@
   };
 
   /* ---------- demo ---------- */
-  ui.actions['demo-fill'] = () => {
+  ui.actions['demo-fill-working'] = () => ui.actions['demo-fill'](null, null, true);
+  ui.actions['demo-fill'] = (el, ev, withWorking) => {
     const ctx = context(ui.route);
-    const f = fixture(ctx.track, ctx.def);
+    const f = fixture(ctx.track, ctx.def, withWorking === true);
     const k = ctx.track.id + ':' + ctx.def.id;
     ui.drafts['ans:' + k] = f.answer; ui.drafts['wrk:' + k] = f.working;
     ui.focusAfter = '[data-fk="attempt-submit"]'; ui.render();

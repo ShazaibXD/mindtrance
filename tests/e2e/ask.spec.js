@@ -99,7 +99,8 @@ test('a very short or vague answer gets the lowest-confidence follow-up, never a
   await page.getByLabel('Your answer').fill('It was bad.');
   await page.getByRole('button', { name: 'Submit attempt' }).click();
   await expect(page.locator('#stage').getByText('Not sure yet')).toBeVisible();
-  await expect(page.locator('#stage').getByText(/2\d%/).first()).toBeVisible();
+  await expect(page.locator('#stage').getByText('Evidence score')).toBeVisible();
+  await expect(page.locator('#stage').getByText('Below 45%')).toBeVisible();
 });
 
 test.describe('with a Gemini key (Google endpoint mocked)', () => {

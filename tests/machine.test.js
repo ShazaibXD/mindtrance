@@ -43,11 +43,19 @@ test('verification cannot succeed without passing through recovery', () => {
   const into = (t) => M.STATES.filter((s) => M.TRANSITIONS[s].includes(t));
   assert.deepEqual(into('MASTERY_VERIFIED'), ['VERIFICATION_REQUIRED']);
   assert.deepEqual(into('VERIFICATION_REQUIRED'), ['RECOVERY_IN_PROGRESS']);
-  assert.deepEqual(into('GAP_CONFIRMED'), ['PROBE_REQUIRED']);
+  assert.deepEqual(into('GAP_CONFIRMED'), ['ERROR_CLASSIFIED', 'PROBE_REQUIRED']);
 });
 
 test('a failed verification returns to recovery', () => {
   const s = at('VERIFICATION_REQUIRED');
   M.transition(s, 'RECOVERY_REQUIRED', 'verification failed');
   assert.equal(s.state, 'RECOVERY_REQUIRED');
+});
+
+test('escalation is reachable only after probes or failed verification, and always returns to READY', () => {
+  const into = (t) => M.STATES.filter((s) => M.TRANSITIONS[s].includes(t));
+  assert.deepEqual(into('ESCALATED_TO_SOLUTION').sort(), ['PROBE_REQUIRED', 'VERIFICATION_REQUIRED']);
+  assert.deepEqual(M.TRANSITIONS.ESCALATED_TO_SOLUTION, ['READY']);
+  assert.deepEqual(M.TRANSITIONS.DIRECT_EXPLANATION, ['READY']);
+  assert.ok(!M.canTransition('PROBE_REQUIRED', 'RETRY_REQUIRED'), 'running out of probes escalates instead');
 });

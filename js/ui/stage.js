@@ -22,51 +22,82 @@
     return MT.data.track(session.trackId).concepts.find((c) => c.id === id);
   }
 
+  const TIER_TEXT = {
+    INSUFFICIENT: 'Below 45%: not enough to name a cause, so one short question comes first.',
+    SUSPECTED: '45% to 75%: a working hypothesis that is checked before anything is taught.',
+    CONFIRMED: '75% or more: your own working shows the cause.',
+  };
+
+  function evidenceBlock(d) {
+    const items = d.evidenceItems || [];
+    return '<div><div class="row between small"><span class="label">Evidence score</span><span class="mono">' + ui.pct(d.evidenceScore != null ? d.evidenceScore : d.confidence) + '%</span></div>' + ui.meter(d.evidenceScore != null ? d.evidenceScore : d.confidence)
+      + '<p class="hint">' + esc(TIER_TEXT[d.tier] || 'A heuristic measure of how well the evidence fits, not a calibrated probability.') + '</p>'
+      + (items.length ? '<details><summary class="small muted">How this score is built</summary><table class="tbl small"><thead><tr><th>Evidence</th><th>Reliability</th><th>Fit</th></tr></thead><tbody>' + items.map((i) => '<tr><td>' + esc(MT.diagnose.SOURCE_LABEL[i.source] || i.source) + '<br><span class="faint">' + esc(i.note) + '</span></td><td class="mono">' + ui.f2(i.w) + '</td><td class="mono">' + ui.f2(i.r) + '</td></tr>').join('') + '</tbody></table><p class="hint">Score = 1 - product of (1 - reliability x fit). A heuristic, not a calibrated probability.</p></details>' : '') + '</div>';
+  }
+
   function diagnosisCard(session) {
     const d = session.diagnosis;
-    const cat = MT.diagnose.CATEGORIES[d.category];
-    const track = MT.data.track(session.trackId);
-    const cls = ui.CATEGORY_CLS[d.category] || '';
+    const eff = MT.diagnose.effectiveOutcome(d);
+    const cat = MT.diagnose.OUTCOMES[eff];
+    const cls = ui.outcomeCls(eff);
     const top = d.candidates && d.candidates[session.probeIndex || 0];
     const concept = top ? conceptOf(session, top.id) : null;
     const hasCands = d.candidates && d.candidates.length > 0;
     const working = session.attempt && session.attempt.working.trim();
     return '<div class="card stack" style="--gap-y:12px"><div class="row between"><h3 id="stage-title" tabindex="-1">Diagnosis</h3><span class="badge ' + cls + '"><span class="dot"></span>' + esc(cat.label) + '</span></div>'
       + '<p class="muted">' + esc(cat.blurb) + '</p>'
-      + '<div><div class="row between small"><span class="label">Evidence strength</span><span class="mono">' + ui.pct(d.confidence) + '%</span></div>' + ui.meter(d.confidence)
-      + '<p class="hint">A heuristic measure of how well the evidence fits, not a calibrated probability.</p></div>'
+      + (eff !== d.category ? '<p class="small">Leading hypothesis so far: <strong>' + esc(MT.diagnose.OUTCOMES[d.category].label) + '</strong>.</p>' : '')
+      + evidenceBlock(d)
       + '<div><p class="label">Evidence from your work</p><ul class="steps">' + d.evidence.map((e) => '<li>' + fmt(e) + '</li>').join('') + '</ul>'
-      + (working ? '<details><summary class="small muted">Your working as submitted</summary><pre class="quote">' + esc(session.attempt.working) + '</pre></details>' : '') + '</div>'
+      + (working ? '<details><summary class="small muted">Your working as submitted</summary><pre class="quote">' + esc(session.attempt.working) + '</pre></details>' : '<p class="hint">No working was submitted. Showing your steps gives the diagnosis much stronger evidence.</p>') + '</div>'
       + (concept && ['PROBE_REQUIRED', 'ERROR_CLASSIFIED'].includes(session.state)
         ? '<div class="notice info">' + ui.icon('info') + '<div><strong>Hypothesis: ' + esc(concept.name) + '</strong> <span class="badge suspect">suspected, not confirmed</span><p class="muted small">Why it matters here: ' + fmt(concept.lesson.why) + '</p></div></div>' : '')
       + (hasCands && d.candidates.length > 1 ? '<details><summary class="small muted">All hypotheses, ranked from the graph</summary><table class="tbl small"><thead><tr><th>Concept</th><th>Dependency</th><th>Mastery</th><th>Evidence</th></tr></thead><tbody>'
         + d.candidates.map((c) => '<tr><td>' + esc(conceptOf(session, c.id).name) + '</td><td class="mono">' + (c.parts.pathWeight != null ? ui.f2(c.parts.pathWeight) : '-') + '</td><td class="mono">' + (c.parts.mastery != null ? ui.f2(c.parts.mastery) : '-') + '</td><td>' + (c.fromEvidence ? 'from your answer' : 'graph only') + '</td></tr>').join('') + '</tbody></table></details>' : '')
-      + '<p class="hint">' + esc(ENGINE[d.engine] || d.engine) + (track ? '' : '') + '</p></div>';
+      + '<p class="hint">' + esc(ENGINE[d.engine] || d.engine) + '</p></div>';
   }
 
   function probeCard(session) {
     const pr = MT.flow.currentProbe(session);
     if (!pr) return '';
-    const weak = session.diagnosis && session.diagnosis.confidence < 0.6;
+    const tier = session.diagnosis && session.diagnosis.tier;
+    const weak = tier === 'INSUFFICIENT';
+    const pct = session.diagnosis ? ui.pct(session.diagnosis.evidenceScore != null ? session.diagnosis.evidenceScore : session.diagnosis.confidence) : 0;
     return '<form class="card stack" data-form="probe" style="--gap-y:12px"><div class="row between"><h3>' + (weak ? 'Follow-up question' : 'Diagnostic check') + ' ' + pr.number + ' of up to ' + pr.total + '</h3><span class="badge">' + esc(pr.concept.name) + '</span></div>'
-      + (weak ? '<div class="notice warn">' + ui.icon('info') + '<p class="small"><strong>Not sure yet.</strong> The evidence from your answer is weak (' + ui.pct(session.diagnosis.confidence) + '%), so I cannot tell what is missing. This question checks the most likely concept before anything is taught.</p></div>' : '<p class="muted small">A one-step question on the suspected concept only. It does not reveal the answer to your problem.</p>')
+      + (weak ? '<div class="notice warn">' + ui.icon('info') + '<p class="small"><strong>Not sure yet.</strong> The evidence so far is too thin (' + pct + '%) to say what is missing. This question checks the most likely concept before anything is taught.</p></div>'
+        : tier === 'SUSPECTED' ? '<div class="notice info">' + ui.icon('info') + '<p class="small"><strong>Working hypothesis (' + pct + '%).</strong> It looks like this concept is the sticking point. A quick check will confirm or rule it out.</p></div>'
+          : '<p class="muted small">A one-step question on the suspected concept only. It does not reveal the answer to your problem.</p>')
       + '<p class="math problem-text">' + fmt(pr.mcq.q) + '</p>' + mcq('opt', pr.mcq)
       + '<div><button class="btn primary" type="submit" data-fk="probe-submit">Submit probe answer</button></div></form>';
   }
 
   function slipCard(session) {
     const d = session.diagnosis;
-    let next;
-    if (d.category === 'POSSIBLE_CARELESS_SLIP') next = 'Re-check the last step of your working. Your mastery estimates were not changed.';
-    else if (d.category === 'CALCULATION_OR_UNIT_ERROR') next = 'Re-check unit prefixes and conversions. One unit slip does not change mastery; a repeat will trigger a probe on unit conversion.';
-    else next = 'No probe found a confirmed gap, so no mastery was lowered. Re-read the problem and try again.';
-    return '<div class="card stack" style="--gap-y:12px"><p class="eyebrow">Next step</p><p>' + esc(next) + '</p><div><button class="btn primary" type="button" data-action="try-again" data-fk="retry">Try again</button></div></div>';
+    const msg = {
+      POSSIBLE_CARELESS_SLIP: 'This does not look like you. Want to double-check one line of your working? Your mastery estimates were not changed.',
+      CALCULATION_OR_UNIT_ERROR: 'Your approach looks sound. Re-check the arithmetic and the units in the last steps. Your mastery estimates were not changed. A repeated unit slip will trigger a quick check on unit conversion.',
+      READING_OR_INTERPRETATION_ERROR: 'The work answers a slightly different question than the one asked. Re-read the wording of the problem and try again. Your mastery estimates were not changed.',
+      LANGUAGE_COMPREHENSION_DIFFICULTY: 'The wording of the question may be getting in the way. Re-read it slowly, in your own words, then try again. Your mastery estimates were not changed.',
+    }[d.category] || 'No cause could be confirmed, so no mastery was lowered. Re-read the problem and try again.';
+    return '<div class="card stack" style="--gap-y:12px"><p class="eyebrow">Next step</p><p>' + esc(msg) + '</p><div><button class="btn primary" type="button" data-action="try-again" data-fk="retry">Try again</button></div></div>';
+  }
+
+  function escalationCard(session) {
+    const e = session.escalation || { concepts: [], solution: [] };
+    const names = e.concepts.map((id) => conceptOf(session, id).name);
+    return '<div class="card stack" style="--gap-y:12px"><h3 id="stage-title" tabindex="-1">Let\'s step back and look at it together</h3>'
+      + '<p>' + (e.reason === 'recovery' ? 'You have worked through two rounds on this idea, and it is still not clicking. That happens, and it says something about the explanation as much as about you.' : 'Two short questions did not pinpoint what is missing, so instead of asking more, here is the full solution.') + '</p>'
+      + (e.solution.length ? '<div><p class="label">Worked solution</p><ol class="steps math">' + e.solution.map((x) => '<li>' + fmt(x) + '</li>').join('') + '</ol></div>' : '<p class="muted">There is no stored worked solution for an open-ended question. Review the lessons on the map, then try again.</p>')
+      + (names.length ? '<p class="small">Marked for review in two days: <strong>' + names.map(esc).join(', ') + '</strong>.</p>' : '')
+      + '<div class="notice info">' + ui.icon('info') + '<p class="small">A teacher, tutor or classmate can often unstick this faster than another round of questions. Take the worked steps with you.</p></div>'
+      + '<div class="row"><button class="btn primary" type="button" data-action="try-again" data-fk="retry">Try the problem again</button><a class="btn" href="' + ui.link('map', { track: session.trackId }) + '">Open the map</a></div></div>';
   }
 
   function gapCard(session) {
     const c = conceptOf(session, session.gap.conceptId);
     return '<div class="card stack" style="--gap-y:12px"><div class="row between"><h3 id="stage-title" tabindex="-1">Gap confirmed</h3><span class="badge gap"><span class="dot"></span>Confirmed gap</span></div>'
-      + '<p><strong>' + esc(c.name) + '</strong>: the probe was missed and the mastery estimate fell to <span class="mono">' + ui.f2(session.gap.p) + '</span>, below the 0.45 threshold.</p>'
+      + '<p><strong>' + esc(c.name) + '</strong>: ' + (session.gap.confirmedBy === 'evidence' ? 'your own working shows the cause (evidence ' + ui.pct(session.diagnosis.evidenceScore) + '%), so no extra question was needed.' : 'the probe was missed.') + ' The mastery estimate is now <span class="mono">' + ui.f2(session.gap.p) + '</span>, below the 0.45 threshold.</p>'
+      + (session.gap.outcome === 'PROCEDURAL_ERROR' ? '<p class="muted">The idea and rule were right; a step went wrong. The recovery focuses on that step rather than re-teaching the basics.</p>' : '')
       + '<p class="muted">The original problem stays locked until this concept is recovered and re-verified on a fresh problem.</p>'
       + '<div><button class="btn primary" type="button" data-action="start-recovery" data-fk="start-recovery">Start recovery</button></div></div>';
   }
@@ -84,8 +115,9 @@
     const personal = session.gap && session.gap.evidence && session.gap.evidence.length ? '<div class="notice gold">' + ui.icon('info') + '<div><strong>What your answer showed</strong><p class="small">' + fmt(session.gap.evidence[0]) + '</p></div></div>' : '';
     const head = '<div class="row between"><h3 id="stage-title" tabindex="-1">Recover: ' + esc(c.name) + '</h3><span class="badge ' + ui.STATUS[st.status].cls + '">' + ui.f2(st.p) + '</span></div>' + stepper(session.recovery.step);
     if (session.recovery.step === 'lesson') {
+      const procedural = session.gap && session.gap.outcome === 'PROCEDURAL_ERROR';
       return '<div class="card stack" style="--gap-y:14px">' + head + personal
-        + '<div><p class="label">The idea</p><p class="math">' + fmt(L.explain) + '</p></div>'
+        + (procedural ? '<div class="notice info">' + ui.icon('info') + '<p class="small"><strong>You chose the right idea.</strong> This is about one step, so the definition is not repeated. Compare the correct step with yours below, then try the practice question.</p></div>' : '<div><p class="label">The idea</p><p class="math">' + fmt(L.explain) + '</p></div>')
         + '<div><p class="label">Why it matters here</p><p>' + fmt(L.why) + '</p></div>'
         + '<div class="notice warn">' + ui.icon('alert') + '<div><strong>Common misconception</strong><p class="small">' + fmt(L.misconception) + '</p></div></div>'
         + '<div class="card elev"><p class="label">Worked example</p><p class="math">' + fmt(L.example.q) + '</p><p class="math" style="margin-top:6px"><strong>' + fmt(L.example.a) + '</strong></p></div>'
@@ -157,7 +189,7 @@
     const verified = !!(session && session.result && session.result.verified);
     const cur = { READY: verified ? 5 : 0, ATTEMPT_SUBMITTED: 0, ERROR_CLASSIFIED: 1, PROBE_REQUIRED: 1, RETRY_REQUIRED: verified ? 5 : 1, GAP_CONFIRMED: 2, RECOVERY_REQUIRED: 2, RECOVERY_IN_PROGRESS: 2, VERIFICATION_REQUIRED: 3, MASTERY_VERIFIED: 4, ATTEMPT_CORRECT: 6 }[st];
     return '<aside class="card demo" aria-label="Judge demo guide"><div class="row between"><h3>Judge demo guide</h3><span class="badge gold">demo fixture</span></div>'
-      + '<p class="small muted">The wrong attempt is a pre-written fixture. The diagnosis, probe, mastery numbers and graph are computed live by the rule-based engine. Nothing in this demo is AI-generated.</p>'
+      + '<p class="small muted">The wrong attempt is a pre-written fixture with only a final answer, which is thin evidence, so a probe comes first. "Fill in with working" adds the steps: strong evidence skips the probe. The diagnosis, mastery numbers and graph are computed live by the rule-based engine. Nothing in this demo is AI-generated.</p>'
       + '<ol class="steps small">' + labels.map((l, i) => '<li' + (i === cur ? ' class="cur" aria-current="step"' : '') + (i < cur ? ' style="opacity:.55"' : '') + '>' + esc(l) + '</li>').join('') + '</ol>'
       + '<div class="row"><button class="btn sm" type="button" data-action="demo-reset">Reset demo data</button></div></aside>';
   }
@@ -170,7 +202,8 @@
     } else if (session.state === 'ATTEMPT_CORRECT') body = solvedCard(session);
     else if (session.state === 'PROBE_REQUIRED') body = diagnosisCard(session) + probeCard(session);
     else if (session.state === 'RETRY_REQUIRED') body = (session.diagnosis ? diagnosisCard(session) : '') + slipCard(session);
-    else if (session.state === 'GAP_CONFIRMED') body = gapCard(session);
+    else if (session.state === 'GAP_CONFIRMED') body = (session.diagnosis ? diagnosisCard(session) : '') + gapCard(session);
+    else if (session.state === 'ESCALATED_TO_SOLUTION') body = escalationCard(session);
     else if (session.state === 'RECOVERY_REQUIRED') body = '<div class="card stack" style="--gap-y:12px"><h3 id="stage-title" tabindex="-1">The gap is still open</h3><p class="muted">Review the lesson again, then try another fresh problem.</p><div><button class="btn primary" type="button" data-action="start-recovery" data-fk="start-recovery">Return to the lesson</button></div></div>';
     else if (session.state === 'RECOVERY_IN_PROGRESS') body = recoveryCard(session, store);
     else if (session.state === 'VERIFICATION_REQUIRED') body = verificationCard(session);

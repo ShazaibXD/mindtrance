@@ -29,6 +29,7 @@
     events: [],
     sessions: {},
     customs: {},
+    reviews: {},
     seq: 1,
   });
 
@@ -62,6 +63,7 @@
       const p = profile();
       if (!p) throw new Error('No active profile');
       if (!p.data.customs) p.data.customs = {}; // saves from before custom questions existed
+      if (!p.data.reviews) p.data.reviews = {};
       return p.data;
     };
 
@@ -148,9 +150,10 @@
     }
 
     /* An answer: updates the estimate with BKT observation only (no learning). */
-    function observe(trackId, conceptId, correct, meta) {
+    function observe(trackId, conceptId, correct, metaIn) {
+      const { bkt: bktParams, ...meta } = metaIn || {};
       const rec = Object.assign({}, record(trackId, conceptId));
-      const r = MT.bkt.observe(rec.p, correct);
+      const r = MT.bkt.observe(rec.p, correct, bktParams);
       rec.p = r.after;
       rec.obs += 1;
       if (!correct) rec.fails += 1;
@@ -232,6 +235,15 @@
       if (p0) { p0.data = blankData(); syncCustom(); commit(); }
     }
 
+    /* ---------- spaced review ---------- */
+    function scheduleReview(trackId, conceptId, reason, days) {
+      const d = data();
+      d.reviews[mkey(trackId, conceptId)] = { trackId, conceptId, reason, dueAt: now() + days * 86400000 };
+      commit();
+    }
+    const dueReviews = () => Object.values(data().reviews).filter((r) => r.dueAt <= now() && MT.data.track(r.trackId)).sort((a, b) => a.dueAt - b.dueAt);
+    function clearReview(trackId, conceptId) { delete data().reviews[mkey(trackId, conceptId)]; commit(); }
+
     /* ---------- custom questions ---------- */
     function addCustomTrack(entry) {
       const d = data();
@@ -257,7 +269,7 @@
     syncCustom();
 
     return {
-      persistent, now, addCustomTrack, removeCustomTrack, customTracks: () => (profile() ? Object.values(data().customs) : []),
+      persistent, now, scheduleReview, dueReviews, clearReview, addCustomTrack, removeCustomTrack, customTracks: () => (profile() ? Object.values(data().customs) : []),
       subscribe: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
       profiles: () => Object.values(root.profiles), profile, validateName, signUp, signIn, signOut, deleteProfile, renameProfile,
       data, p, record, masteryMap, observe, learn, conceptState, graphState, addEvent, commit,

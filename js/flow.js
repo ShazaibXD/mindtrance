@@ -5,7 +5,8 @@
   const MT = (g.MT = g.MT || {});
 
   const ORIGINAL_SEED = 1;
-  const MAX_PROBES = 3;
+  const MAX_PROBES = 2; // spec: at most two diagnostic probes per question
+  const MAX_RECOVERY_LOOPS = 2;
 
   const trackOf = (s) => MT.data.track(s.trackId);
   const conceptOf = (track, id) => track.concepts.find((c) => c.id === id);
@@ -65,6 +66,15 @@
     return beginRecovery(store, s.id);
   }
 
+  /* How often each concept was implicated in earlier gap attempts on this track (cross-session history). */
+  function priorGapCounts(store, trackId) {
+    const out = {};
+    for (const e of store.events()) {
+      if (e.type === 'ATTEMPT' && e.trackId === trackId && !e.correct && e.conceptId && ['gap', 'partial'].includes(MT.diagnose.kindOf(e.category))) out[e.conceptId] = (out[e.conceptId] || 0) + 1;
+    }
+    return out;
+  }
+
   function logEvent(store, session, type, extra) {
     store.addEvent(Object.assign({ type, trackId: session.trackId, sessionId: session.id, problemId: session.problemId }, extra));
     store.commit();
@@ -80,7 +90,7 @@
     if (locked.length) return { ok: false, locked, error: 'Recover the confirmed gap first.' };
 
     const mastery = store.masteryMap(s.trackId);
-    let res = MT.diagnose.diagnose(track, problem, answer, working, mastery);
+    let res = MT.diagnose.diagnose(track, problem, answer, working, mastery, { priorGaps: priorGapCounts(store, s.trackId) });
     if (res.category === 'INVALID_INPUT') return { ok: false, error: res.reason };
 
     if (problem.answer.kind === 'open') {
@@ -115,7 +125,7 @@
     MT.machine.transition(s, 'ERROR_CLASSIFIED', res.category, now);
     s.diagnosis = res;
     s.probeIndex = 0;
-    logEvent(store, s, 'ATTEMPT', { category: res.category, correct: false, conceptId: res.hintConcept || null, matchedBy: res.matchedBy });
+    logEvent(store, s, 'ATTEMPT', { category: res.category, tier: res.tier, correct: false, conceptId: res.hintConcept || null, matchedBy: res.matchedBy });
 
     let candidates = res.candidates || [];
     if (res.category === 'CALCULATION_OR_UNIT_ERROR' && res.hintConcept) {
@@ -128,25 +138,47 @@
     }
     res.candidates = candidates;
 
+    // Strong evidence (S_E >= 0.75, e.g. the working shows the exact error) needs no extra question.
+    if (MT.diagnose.kindOf(res.category) === 'gap' && res.tier === 'CONFIRMED' && res.hintConcept && candidates.length) {
+      const cid = res.hintConcept;
+      if (MT.bkt.observe(store.p(s.trackId, cid), false, ctxParams(store, 'attempt', problem)).after < MT.bkt.DEFAULTS.gapBelow) {
+        const o = store.observe(s.trackId, cid, false, { sessionId: s.id, problemId: s.problemId, source: 'attempt-evidence', bkt: ctxParams(store, 'attempt', problem) });
+        s.gap = { conceptId: cid, p: o.after, evidence: res.evidence.slice(), misconception: conceptOf(track, cid).lesson.misconception, outcome: res.category, confirmedBy: 'evidence' };
+        MT.machine.transition(s, 'GAP_CONFIRMED', 'evidence ' + Math.round(res.evidenceScore * 100) + '%', now);
+        store.touch(s);
+        return { ok: true, session: s, diagnosis: res };
+      }
+    }
+
     if (candidates.length) {
       MT.machine.transition(s, 'PROBE_REQUIRED', 'probe ' + candidates[0].id, now);
     } else {
-      MT.machine.transition(s, 'RETRY_REQUIRED', res.category === 'POSSIBLE_CARELESS_SLIP' ? 'slip: no mastery change' : 'no probe needed', now);
+      MT.machine.transition(s, 'RETRY_REQUIRED', MT.diagnose.kindOf(res.category) === 'slip' ? 'slip: no mastery change' : 'no probe needed', now);
     }
     store.touch(s);
     return { ok: true, session: s, diagnosis: res };
+  }
+
+  /* Context-adjusted BKT parameters (spec 11.1): slip is higher after a calculation slip, guess depends on the answer format. */
+  function ctxParams(store, source, problem) {
+    const out = {};
+    if (source === 'probe' || source === 'practice' || source === 'verification-choice') out.pGuess = 1 / 3; // three-option multiple choice
+    else if (problem && problem.answer && problem.answer.kind === 'choice') out.pGuess = 1 / 3;
+    else out.pGuess = 0.05; // typed numeric or expression answer
+    return out;
   }
 
   /* Optional AI classification (already schema-validated by ai.js) replaces only a fallback result. */
   function applyOverride(track, res, ov, mastery) {
     const gr = MT.graph.build(track);
     const out = Object.assign({}, res, {
-      engine: ov.engine || 'gemini', category: ov.category, confidence: ov.confidence, evidence: ov.evidence, matchedBy: ov.matchedBy || 'ai',
+      engine: ov.engine || 'gemini', category: ov.category, evidence: ov.evidence, matchedBy: ov.matchedBy || 'ai',
       hintConcept: gr.byId.has(ov.hintConcept) ? ov.hintConcept : null,
     });
-    if (out.category === 'PREREQUISITE_GAP' || out.category === 'CONCEPTUAL_GAP') {
+    MT.diagnose.withEvidence(out, [{ source: out.engine === 'demo-rubric' ? 'RUBRIC' : 'AI_JUDGEMENT', w: MT.diagnose.WEIGHTS[out.engine === 'demo-rubric' ? 'RUBRIC' : 'AI_JUDGEMENT'], r: ov.confidence, note: 'Judgement of your written answer.' }]);
+    if (MT.diagnose.needsCandidates(out.category)) {
       const hints = out.hintConcept ? { [out.hintConcept]: 0.8 } : {};
-      const ranked = MT.graph.rankSuspects(gr, track.target, mastery, { hints, includeTarget: true }).filter((r) => r.score > 0).slice(0, MAX_PROBES);
+      const ranked = MT.graph.rankSuspects(gr, track.target, mastery, { hints, includeTarget: true }).filter((r) => r.score > 0).slice(0, 3);
       out.candidates = ranked.map((r) => ({ id: r.id, score: r.score, parts: r.parts, fromEvidence: r.parts.hint > 0 }));
     } else out.candidates = [];
     return out;
@@ -167,7 +199,7 @@
     if (!probe) return { ok: false, error: 'There is no active probe.' };
     const correct = optionIndex === probe.concept.probe.correct;
     const now = store.now();
-    const o = store.observe(s.trackId, probe.concept.id, correct, { sessionId: s.id, problemId: s.problemId, source: 'probe' });
+    const o = store.observe(s.trackId, probe.concept.id, correct, { sessionId: s.id, problemId: s.problemId, source: 'probe', bkt: ctxParams(store, 'probe') });
     const entry = { conceptId: probe.concept.id, correct, before: o.before, after: o.after };
     s.probes.push(entry);
     const advance = (note) => {
@@ -176,12 +208,12 @@
         MT.machine.transition(s, 'PROBE_REQUIRED', note, now);
         return 'NEXT_PROBE';
       }
-      MT.machine.transition(s, 'RETRY_REQUIRED', 'probes found no confirmed gap', now);
-      return 'NO_GAP';
+      escalate(store, s, 'probes');
+      return 'ESCALATED';
     };
     let outcome;
     if (!correct && o.after < MT.bkt.DEFAULTS.gapBelow) {
-      s.gap = { conceptId: probe.concept.id, p: o.after, evidence: s.diagnosis.evidence.slice(), misconception: probe.concept.lesson.misconception };
+      s.gap = { conceptId: probe.concept.id, p: o.after, evidence: s.diagnosis.evidence.slice(), misconception: probe.concept.lesson.misconception, outcome: s.diagnosis.category, confirmedBy: 'probe' };
       MT.machine.transition(s, 'GAP_CONFIRMED', probe.concept.id, now);
       outcome = 'GAP_CONFIRMED';
     } else if (!correct) {
@@ -193,6 +225,19 @@
     entry.outcome = outcome;
     store.touch(s);
     return { ok: true, session: s, correct, outcome, entry };
+  }
+
+  /* After two probes or two failed recoveries, stop questioning: give the worked solution and flag the concepts for review. */
+  function escalate(store, s, reason) {
+    const track = trackOf(s);
+    const problem = originalProblem(s);
+    const ids = reason === 'recovery' ? [s.gap.conceptId] : ((s.diagnosis && s.diagnosis.candidates) || []).slice(0, MAX_PROBES).map((c) => c.id);
+    MT.machine.transition(s, 'ESCALATED_TO_SOLUTION', reason === 'recovery' ? 'two recovery cycles without verification' : 'two probes without a confirmed cause', store.now());
+    s.escalation = { reason, concepts: ids, solution: (problem.solution || []).slice() };
+    for (const id of ids) store.scheduleReview(s.trackId, id, 'escalated', 2);
+    logEvent(store, s, 'ESCALATED', { reason, conceptId: ids[0] || null });
+    store.touch(s);
+    void track;
   }
 
   function beginRecovery(store, sessionId) {
@@ -232,7 +277,7 @@
     const pr = s && currentPractice(s);
     if (!pr || s.recovery.practiceDone) return { ok: false, error: 'No practice question is active.' };
     const correct = optionIndex === pr.concept.practice.correct;
-    const o = store.observe(s.trackId, pr.concept.id, correct, { sessionId: s.id, source: 'practice' });
+    const o = store.observe(s.trackId, pr.concept.id, correct, { sessionId: s.id, source: 'practice', bkt: ctxParams(store, 'practice') });
     s.recovery.practiceTries += 1;
     if (correct) { s.recovery.practiceDone = true; s.recovery.step = 'done'; }
     store.touch(s);
@@ -283,8 +328,9 @@
 
     if (res.category === 'CORRECT_UNDERSTANDING') {
       const before = store.p(s.trackId, gapId);
-      const o = store.observe(s.trackId, gapId, true, { sessionId: s.id, source: 'verification' });
-      if (gapId !== track.target) store.observe(s.trackId, track.target, true, { sessionId: s.id, source: 'verification-transfer' });
+      const vParams = ctxParams(store, vp.answer.kind === 'choice' ? 'verification-choice' : 'verification', vp);
+      const o = store.observe(s.trackId, gapId, true, { sessionId: s.id, source: 'verification', bkt: vParams });
+      if (gapId !== track.target) store.observe(s.trackId, track.target, true, { sessionId: s.id, source: 'verification-transfer', bkt: vParams });
       attempt.after = o.after;
       if (o.after >= MT.bkt.DEFAULTS.masteredAt) {
         MT.machine.transition(s, 'MASTERY_VERIFIED', 'verified', now);
@@ -302,13 +348,18 @@
 
     const implicated = res.hintConcept === gapId && (res.category === 'PREREQUISITE_GAP' || res.category === 'CONCEPTUAL_GAP' || res.category === 'CALCULATION_OR_UNIT_ERROR');
     if (implicated) {
-      const o = store.observe(s.trackId, gapId, false, { sessionId: s.id, source: 'verification' });
+      const o = store.observe(s.trackId, gapId, false, { sessionId: s.id, source: 'verification', bkt: ctxParams(store, vp.answer.kind === 'choice' ? 'verification-choice' : 'verification', vp) });
       attempt.after = o.after;
-      MT.machine.transition(s, 'RECOVERY_REQUIRED', 'verification failed on the same concept', now);
       s.gap.p = o.after;
       s.recovery = null;
-      s.verification.failedOnce = true;
+      s.recoveryLoops = (s.recoveryLoops || 0) + 1;
       logEvent(store, s, 'VERIFICATION_FAILED', { conceptId: gapId, before: o.before, after: o.after });
+      if (s.recoveryLoops >= MAX_RECOVERY_LOOPS) {
+        s.diagnosis = s.diagnosis || { candidates: [{ id: gapId }] };
+        escalate(store, s, 'recovery');
+        return { ok: true, session: s, outcome: 'ESCALATED', diagnosis: res };
+      }
+      MT.machine.transition(s, 'RECOVERY_REQUIRED', 'verification failed on the same concept', now);
       store.touch(s);
       return { ok: true, session: s, outcome: 'SAME_GAP', diagnosis: res };
     }
@@ -325,10 +376,11 @@
     if (!s) return null;
     const now = store.now();
     if (s.state === 'MASTERY_VERIFIED') MT.machine.transition(s, 'RETRY_REQUIRED', 'retry original', now);
+    if (s.state === 'ESCALATED_TO_SOLUTION') MT.machine.transition(s, 'READY', 'back to the problem', now);
     if (s.state === 'ATTEMPT_CORRECT' || s.state === 'RETRY_REQUIRED') MT.machine.transition(s, 'READY', 'new attempt', now);
     if (s.state === 'READY') {
       if (s.attempt) s.history.push({ attempt: s.attempt, category: s.diagnosis && s.diagnosis.category });
-      s.attempt = null; s.diagnosis = null; s.probes = []; s.probeIndex = 0; s.gap = null; s.recovery = null; s.verification = null;
+      s.attempt = null; s.diagnosis = null; s.probes = []; s.probeIndex = 0; s.gap = null; s.recovery = null; s.verification = null; s.escalation = null; s.recoveryLoops = 0;
       s.result = Object.assign({}, s.result, { solved: false });
     }
     store.touch(s);
@@ -337,7 +389,7 @@
 
   /* What the student should do next, for the dashboard. */
   function nextAction(store) {
-    const open = store.sessionList().find((s) => !s.closed && !['READY', 'ATTEMPT_CORRECT', 'MASTERY_VERIFIED'].includes(s.state));
+    const open = store.sessionList().find((s) => !s.closed && !['READY', 'ATTEMPT_CORRECT', 'MASTERY_VERIFIED', 'ESCALATED_TO_SOLUTION'].includes(s.state));
     if (open) return { kind: 'continue', session: open };
     const focus = store.settings().examFocus;
     const ordered = MT.data.tracks.slice().sort((a, b) => (b.domainId === focus) - (a.domainId === focus));
@@ -355,7 +407,7 @@
   }
 
   MT.flow = {
-    ORIGINAL_SEED, MAX_PROBES, originalProblem, verificationProblem, presentMCQ, lockedBy, startSession, startRecoveryFor,
+    ORIGINAL_SEED, MAX_PROBES, MAX_RECOVERY_LOOPS, escalate, priorGapCounts, ctxParams, originalProblem, verificationProblem, presentMCQ, lockedBy, startSession, startRecoveryFor,
     submitAttempt, currentProbe, answerProbe, beginRecovery, completeLesson, currentPractice, answerPractice,
     startVerification, submitVerification, tryAgain, nextAction,
   };

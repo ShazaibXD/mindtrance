@@ -21,13 +21,19 @@
     return s;
   }
 
-  const GLYPH = { CORRECT_UNDERSTANDING: ['✓', 'mastered', 'Correct'], POSSIBLE_CARELESS_SLIP: ['S', 'verify', 'Careless slip'], CALCULATION_OR_UNIT_ERROR: ['U', 'verify', 'Unit error'], PREREQUISITE_GAP: ['G', 'gap', 'Prerequisite gap'], CONCEPTUAL_GAP: ['M', 'gap', 'Misconception'] };
+  const GLYPH = {
+    CORRECT_UNDERSTANDING: ['\u2713', 'mastered', 'Correct'], CORRECT_ANSWER_UNVERIFIED_REASONING: ['\u2713?', 'verify', 'Right answer, reasoning unchecked'],
+    POSSIBLE_CARELESS_SLIP: ['S', 'verify', 'Possible slip'], CALCULATION_OR_UNIT_ERROR: ['C', 'verify', 'Calculation or unit slip'],
+    READING_OR_INTERPRETATION_ERROR: ['R', 'verify', 'Reading slip'], LANGUAGE_COMPREHENSION_DIFFICULTY: ['L', 'verify', 'Language difficulty'],
+    PARTIAL_UNDERSTANDING: ['~', 'verify', 'Partial understanding'], PROCEDURAL_ERROR: ['P', 'gap', 'Procedural error'],
+    PREREQUISITE_GAP: ['G', 'gap', 'Prerequisite gap'], CONCEPTUAL_GAP: ['M', 'gap', 'Conceptual gap'], AMBIGUOUS_OR_INSUFFICIENT_EVIDENCE: ['?', 'suspect', 'Not enough evidence'],
+  };
 
   function attemptStrip(attempts) {
     return '<ol class="strip list-reset" aria-label="Attempts in order">' + attempts.map((a, i) => {
       const gl = GLYPH[a.category] || ['?', '', a.category];
       return '<li class="cell ' + gl[1] + '" title="Attempt ' + (i + 1) + ': ' + esc(gl[2]) + '"><span aria-hidden="true">' + gl[0] + '</span><span class="sr-only">Attempt ' + (i + 1) + ': ' + esc(gl[2]) + '</span></li>';
-    }).join('') + '</ol><p class="hint">&#10003; correct &middot; S slip &middot; U unit error &middot; G gap &middot; M misconception</p>';
+    }).join('') + '</ol><p class="hint">&#10003; correct &middot; S possible slip &middot; C calculation or unit &middot; R reading &middot; P procedural &middot; G prerequisite &middot; M conceptual &middot; ~ partial &middot; ? not enough evidence</p>';
   }
 
   MT.charts = { line, attemptStrip };

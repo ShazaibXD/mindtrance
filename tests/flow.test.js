@@ -20,7 +20,7 @@ test('acceptance journey: wrong attempt to verified mastery, with graph and pers
   assert.equal(s.state, 'READY');
 
   // 1-2. wrong attempt -> diagnosis
-  let r = F.submitAttempt(store, s.id, '200 A', 'V2 = 240 x 10 = 2400 V, I2 = 2400/12');
+  let r = F.submitAttempt(store, s.id, '200 A', '');
   assert.ok(r.ok);
   assert.equal(s.state, 'PROBE_REQUIRED');
   assert.equal(r.diagnosis.category, 'PREREQUISITE_GAP');
@@ -109,15 +109,54 @@ test('a passed probe rejects the hypothesis and moves to the next candidate', ()
   assert.ok(store.p(T, first.concept.id) > first.concept.prior);
 });
 
-test('if every probe passes, no gap is confirmed and the student retries without penalty to prerequisites', () => {
+test('the probe ceiling is two: if neither finds a cause the student gets the worked solution and the concepts are flagged for review', () => {
   const store = fresh();
   const s = F.startSession(store, T, P);
   F.submitAttempt(store, s.id, '200 A', '');
   let guard = 0;
   while (s.state === 'PROBE_REQUIRED' && guard++ < 5) F.answerProbe(store, s.id, F.currentProbe(s).concept.probe.correct);
-  assert.equal(s.state, 'RETRY_REQUIRED');
+  assert.equal(s.state, 'ESCALATED_TO_SOLUTION');
+  assert.equal(s.probes.length, 2, 'never a third probe');
   assert.equal(s.gap, null);
-  assert.ok(s.probes.length <= F.MAX_PROBES);
+  assert.equal(s.escalation.reason, 'probes');
+  assert.ok(s.escalation.solution.length >= 2, 'a worked solution is provided');
+  assert.equal(s.escalation.concepts.length, 2);
+  assert.equal(store.dueReviews().length, 0, 'reviews are scheduled for later, not due now');
+  assert.equal(Object.keys(store.data().reviews).length, 2);
+  assert.ok(store.events().some((e) => e.type === 'ESCALATED'));
+  F.tryAgain(store, s.id);
+  assert.equal(s.state, 'READY');
+});
+
+test('strong evidence in the working confirms the gap without a probe', () => {
+  const store = fresh();
+  const s = F.startSession(store, T, P);
+  const r = F.submitAttempt(store, s.id, '200 A', 'N1/N2 = 10\nV2 = V1 x N1/N2 = 240 x 10 = 2400 V');
+  assert.equal(r.diagnosis.tier, 'CONFIRMED');
+  assert.equal(s.state, 'GAP_CONFIRMED');
+  assert.equal(s.gap.conceptId, 'turns_ratio');
+  assert.equal(s.gap.confirmedBy, 'evidence');
+  assert.equal(s.probes.length, 0, 'no extra question was needed');
+  assert.ok(store.p(T, 'turns_ratio') < 0.45);
+  assert.equal(store.graphState(T).turns_ratio.status, 'CONFIRMED_GAP');
+});
+
+test('two failed recovery cycles escalate instead of looping forever', () => {
+  const store = fresh();
+  const s = F.startSession(store, T, P);
+  F.submitAttempt(store, s.id, '200 A', 'V2 = V1 x N1/N2 = 240 x 10');
+  for (let cycle = 1; cycle <= 2; cycle++) {
+    F.beginRecovery(store, s.id); F.completeLesson(store, s.id);
+    F.answerPractice(store, s.id, F.currentPractice(s).concept.practice.correct);
+    F.startVerification(store, s.id);
+    const vp = F.verificationProblem(s);
+    const inv = vp.patterns.find((p) => p.concept === 'turns_ratio' && /upside down/.test(p.evidence));
+    const out = F.submitVerification(store, s.id, inv.value + ' A', '');
+    assert.equal(out.outcome, cycle === 1 ? 'SAME_GAP' : 'ESCALATED');
+  }
+  assert.equal(s.state, 'ESCALATED_TO_SOLUTION');
+  assert.equal(s.escalation.reason, 'recovery');
+  assert.deepEqual(s.escalation.concepts, ['turns_ratio']);
 });
 
 test('a failed verification on the same concept sends the student back to recovery', () => {

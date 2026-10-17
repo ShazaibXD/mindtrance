@@ -7,7 +7,9 @@ test('acceptance journey: wrong attempt to verified mastery, graph updates, pers
   // 1-3. wrong attempt, diagnosis with evidence, no answer leak
   await submitDemoAttempt(page);
   const stage = page.locator('#stage');
-  await expect(stage.getByText('Suspected prerequisite gap')).toBeVisible();
+  await expect(stage.getByText('Not enough evidence yet').first()).toBeVisible();
+  await expect(stage.getByText('Leading hypothesis so far')).toBeVisible();
+  await expect(stage.getByText('Below 45%')).toBeVisible();
   await expect(stage.getByText('suspected, not confirmed')).toBeVisible();
   await expect(stage.getByText(/applied upside down/)).toBeVisible();
   await expect(stage.getByText('Rule-based engine (deterministic, no AI)')).toBeVisible();
@@ -95,7 +97,7 @@ test('a careless slip is handled differently: no probe, no mastery change', asyn
   await page.getByLabel(/Working steps/).fill('V2 = 240/10 = 24 V');
   await page.getByRole('button', { name: 'Submit attempt' }).click();
   const stage = page.locator('#stage');
-  await expect(stage.getByText('Careless slip')).toBeVisible();
+  await expect(stage.getByText('Calculation or unit slip').first()).toBeVisible();
   await expect(stage.getByText('Your mastery estimates were not changed')).toBeVisible();
   await expect(stage.getByRole('button', { name: 'Start recovery' })).toHaveCount(0);
   await expect(stage.getByRole('button', { name: 'Submit probe answer' })).toHaveCount(0);
@@ -111,4 +113,37 @@ test('unreadable answers are rejected inline without starting a session', async 
   await page.getByRole('button', { name: 'Submit attempt' }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Enter a number' })).toBeVisible();
   expect(await page.evaluate(() => MT.ui.store.sessionList().length)).toBe(0);
+});
+
+test('strong evidence in the working confirms the gap without a probe', async ({ page }) => {
+  await startDemo(page);
+  await page.getByRole('button', { name: 'Fill in with working' }).click();
+  await expect(page.getByLabel(/Working steps/)).toHaveValue(/2400 V/);
+  await page.getByRole('button', { name: 'Submit attempt' }).click();
+  const stage = page.locator('#stage');
+  await expect(stage.getByRole('heading', { name: 'Gap confirmed' })).toBeVisible();
+  await expect(stage.getByText('so no extra question was needed')).toBeVisible();
+  await expect(stage.getByText('75% or more')).toBeVisible();
+  await expect(stage.getByRole('button', { name: 'Submit probe answer' })).toHaveCount(0);
+  await expect(page.locator('.gv-node[data-id="turns_ratio"]')).toHaveClass(/st-CONFIRMED_GAP/);
+  await stage.getByText('How this score is built').click();
+  await expect(stage.getByText('Checked step in your working')).toBeVisible();
+});
+
+test('two probes that find nothing lead to a worked solution, never a third probe', async ({ page }) => {
+  await startDemo(page);
+  await submitDemoAttempt(page);
+  for (let i = 0; i < 2; i++) {
+    const right = await page.evaluate(() => {
+      const id = new URLSearchParams(location.hash.split('?')[1]).get('session');
+      const pr = MT.flow.currentProbe(MT.ui.store.getSession(id));
+      return pr.mcq.options.find((o) => o.index === pr.concept.probe.correct).text;
+    });
+    await page.getByLabel(right, { exact: true }).check();
+    await page.getByRole('button', { name: 'Submit probe answer' }).click();
+  }
+  await expect(page.getByRole('heading', { name: /step back/ })).toBeVisible();
+  await expect(page.getByText('Worked solution')).toBeVisible();
+  await expect(page.getByText('Marked for review')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Submit probe answer' })).toHaveCount(0);
 });

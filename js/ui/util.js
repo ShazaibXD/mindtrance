@@ -48,7 +48,8 @@
     BLOCKED: { label: 'Blocked by prerequisite', short: 'Blocked', cls: 'blocked', glyph: '–', help: 'An upstream concept is a confirmed gap.' },
   };
 
-  const CATEGORY_CLS = { CORRECT_UNDERSTANDING: 'mastered', POSSIBLE_CARELESS_SLIP: 'verify', CALCULATION_OR_UNIT_ERROR: 'verify', PREREQUISITE_GAP: 'gap', CONCEPTUAL_GAP: 'gap' };
+  const KIND_CLS = { correct: 'mastered', unverified: 'verify', gap: 'gap', slip: 'verify', partial: 'verify', language: 'verify', ambiguous: 'suspect' };
+  const outcomeCls = (outcome) => KIND_CLS[MT.diagnose.kindOf(outcome)] || '';
 
   const badge = (cls, text, dot) => '<span class="badge ' + cls + '">' + (dot ? '<span class="dot"></span>' : '') + esc(text) + '</span>';
   const statusBadge = (st) => badge(STATUS[st].cls, STATUS[st].label, true);
@@ -64,6 +65,6 @@
   const meter = (v, cls) => '<div class="meter ' + (cls || '') + '" role="img" aria-label="' + pct(v) + ' percent"><span style="width:' + Math.max(2, pct(v)) + '%"></span></div>';
 
   MT.ui = MT.ui || {};
-  Object.assign(MT.ui, { esc, fmt, icon, ICONS, STATUS, CATEGORY_CLS, badge, statusBadge, pct, f2, ago, meter });
+  Object.assign(MT.ui, { esc, fmt, icon, ICONS, STATUS, outcomeCls, badge, statusBadge, pct, f2, ago, meter });
   if (typeof module !== 'undefined' && module.exports) module.exports = MT.ui;
 })(typeof window !== 'undefined' ? window : globalThis);
