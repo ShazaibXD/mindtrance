@@ -178,7 +178,7 @@ test('a correct AI judgement is labelled and credits the target concept', () => 
   const { store, id, track } = withFixture();
   const s = F.startSession(store, id, 'q');
   const j = { engine: 'gemini', isCorrect: true, category: 'CORRECT_UNDERSTANDING', confidence: 0.9, hintConcept: null, evidence: ['AI judgement (not deterministically verified): linked.'] };
-  const r = F.submitAttempt(store, s.id, 'A well argued essay answer.', '', { judgement: j });
+  const r = F.submitAttempt(store, s.id, 'A well argued essay answer.', 'My reasoning: the treaty created grievances.', { judgement: j });
   assert.equal(r.diagnosis.category, 'CORRECT_UNDERSTANDING');
   assert.equal(r.diagnosis.engine, 'gemini');
   assert.ok(store.p(id, track.target) > 0.45);
@@ -218,4 +218,46 @@ test('saves from before custom questions existed still load', () => {
   delete s1.data().customs; s1.commit();
   const s2 = mkStore(storage);
   assert.deepEqual(s2.customTracks(), []);
+});
+
+test('incomplete questions are caught before any map is built', () => {
+  const P = MT.custom.precheck;
+  assert.equal(P('Calculate the current flowing through the resistor in the circuit.').clarify, true);
+  assert.match(P('Calculate the current flowing through the resistor in the circuit.').question, /diagram/);
+  assert.equal(P('Find the area of the triangle').clarify, true);
+  for (const ok of ['Calculate the current when 12 V is across a 4 ohm resistor.', 'Find the derivative of x squared.', 'Explain how gravity works.', 'Why did the Roman Republic collapse?', 'Solve x^2 - 5x + 6 = 0', 'Describe how to find the area of a triangle.']) {
+    assert.equal(P(ok).clarify, false, ok);
+  }
+});
+
+test('a model that asks for clarification returns a question, not a map', async () => {
+  const body = { clarification_needed: true, clarification_question: 'What voltage and resistance are given?' };
+  const r = await MT.ai.generateTrack({ apiKey: 'k', fetch: async () => ({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(body) }] } }] }) }) }, 'Calculate the current in the circuit please.');
+  assert.equal(r.ok, false);
+  assert.equal(r.clarify, true);
+  assert.match(r.error, /voltage/);
+  assert.equal(MT.custom.validateSpec({ question_type: 'AMBIGUOUS_FRAGMENT' }).clarify, true);
+});
+
+test('question analysis and edge strength are kept, defaulted and validated', () => {
+  const v = MT.custom.validateSpec(fixtureSpec());
+  assert.ok(v.ok);
+  assert.equal(v.spec.analysis.question_type, 'ESSAY_OR_WRITING');
+  const weird = fixtureSpec(); weird.analysis = undefined; weird.question_type = 'NOT_A_TYPE'; weird.nodes[3].prereqs[1].confidence = 'high'; weird.nodes[3].prereqs[1].strength = 'MAYBE';
+  const w = MT.custom.validateSpec(weird);
+  assert.ok(w.ok);
+  assert.equal(w.spec.analysis.question_type, 'CONCEPT_EXPLANATION');
+  assert.equal(w.spec.nodes[3].prereqs[1].strength, 'REQUIRED');
+  assert.equal(w.spec.nodes[3].prereqs[1].confidence, 0.8);
+});
+
+test('an uncertain, supporting dependency is carried into the graph and marked as uncertain', () => {
+  const { track } = withFixture();
+  const res = track.concepts.find((c) => c.id === 'resentment');
+  const edge = res.prereqs.find((e) => e[0] === 'reparations');
+  assert.equal(edge[4], 'SUPPORTING');
+  assert.ok(edge[1] < 0.6, 'supporting edges weigh less than required ones');
+  const gr = MT.graph.build(track);
+  assert.ok(gr.parents.get('resentment').find((p) => p.id === 'reparations').confidence < 0.6);
+  assert.equal(gr.parents.get('resentment').find((p) => p.id === 'ww1_settlement').strength, 'REQUIRED');
 });

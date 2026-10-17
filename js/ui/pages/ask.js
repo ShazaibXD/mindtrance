@@ -7,6 +7,7 @@
 
   ui.askBusy = false;
   ui.askError = '';
+  ui.askClarify = null;
 
   const EXAMPLES = [
     'Why did the Roman Republic collapse into an empire?',
@@ -33,8 +34,10 @@
       + '<section class="card stack" aria-labelledby="ask-h"><h2 id="ask-h" class="h3">Your question</h2>'
       + '<p class="muted">No subject to pick. MINDTRACE breaks the question into a small prerequisite map, you attempt an answer in your own words, and it diagnoses what is missing before it teaches anything.</p>'
       + (hasKey ? '' : '<div class="notice warn" role="status">' + ui.icon('info') + '<div><strong>Building a map for a new question needs a Gemini key.</strong><p class="small">Add your own in <a href="' + ui.link('settings') + '">Settings</a>. Or try the demo question below, which is a scripted fixture and needs no key.</p></div></div>')
+      + (ui.askClarify ? '<div class="notice warn" role="status">' + ui.icon('info') + '<div><strong>One quick question first.</strong><p class="small">' + esc(ui.askClarify.question) + '</p></div></div>' : '')
       + '<form class="stack" data-form="ask" novalidate>'
       + '<div class="field"><label for="ask-q">What do you want to understand or answer?</label><textarea class="textarea prose" id="ask-q" name="question" maxlength="600" rows="4" placeholder="For example: Why did the Roman Republic collapse into an empire?" data-draft="ask-q" aria-describedby="ask-hint ask-err" required></textarea><div class="hint" id="ask-hint">A sentence or two, up to 600 characters. Any subject.</div><div class="error-text" id="ask-err" role="alert">' + esc(ui.askError) + '</div></div>'
+      + (ui.askClarify ? '<div class="field"><label for="ask-d">Your answer to that</label><textarea class="textarea prose" id="ask-d" name="details" maxlength="300" rows="2" data-draft="ask-d" placeholder="For example: the voltage is 12 V and the resistance is 4 ohms"></textarea></div>' : '')
       + '<div class="chips" role="group" aria-label="Example questions">' + EXAMPLES.map((q, i) => '<button class="chip" type="button" data-action="ask-example" data-i="' + i + '">' + esc(MT.custom.shorten(q)) + '</button>').join('') + '</div>'
       + '<div class="row"><button class="btn primary" type="submit" data-fk="ask-submit"' + (!hasKey || ui.askBusy ? ' disabled' : '') + '>' + (ui.askBusy ? '<span class="spin" aria-hidden="true"></span>Building your map' : 'Build my learning map') + '</button>'
       + (ui.askBusy ? '<span class="hint" role="status">This can take up to a minute.</span>' : '') + '</div></form>'
@@ -47,7 +50,7 @@
 
   ui.registerPage({ name: 'ask', title: 'Ask anything', nav: { label: 'Ask anything', icon: 'ask', order: 1.5 }, render });
 
-  ui.actions['ask-example'] = (el) => { ui.drafts['ask-q'] = EXAMPLES[Number(el.dataset.i)]; ui.askError = ''; ui.focusAfter = '#ask-q'; ui.render(); };
+  ui.actions['ask-example'] = (el) => { ui.drafts['ask-q'] = EXAMPLES[Number(el.dataset.i)]; ui.askError = ''; ui.askClarify = null; ui.focusAfter = '#ask-q'; ui.render(); };
 
   ui.forms.ask = async (form) => {
     if (ui.askBusy) return;
@@ -55,11 +58,22 @@
     const cfg = ui.store.settings();
     ui.askError = '';
     if (!cfg.geminiKey) { ui.askError = 'Add a Gemini key in Settings first, or open the demo question.'; ui.render(); return; }
+    let question = q;
+    if (ui.askClarify) {
+      const d = form.elements.details ? form.elements.details.value.trim() : '';
+      if (d.length < 3) { ui.askError = 'Add the missing detail, or edit the question itself.'; ui.focusAfter = '#ask-d'; ui.render(); return; }
+      question = (ui.askClarify.original + ' ' + d).slice(0, 600);
+    } else {
+      const pc = MT.custom.precheck(q);
+      if (pc.clarify) { ui.askClarify = { question: pc.question, original: q }; ui.focusAfter = '#ask-d'; ui.render(); return; }
+    }
     ui.askBusy = true; ui.render();
-    const r = await MT.ai.generateTrack({ apiKey: cfg.geminiKey }, q);
+    const r = await MT.ai.generateTrack({ apiKey: cfg.geminiKey }, question);
     ui.askBusy = false;
+    if (!r.ok && r.clarify) { ui.askClarify = { question: r.error, original: question }; ui.drafts['ask-d'] = ''; ui.focusAfter = '#ask-d'; ui.render(); return; }
     if (!r.ok) { ui.askError = r.error; ui.focusAfter = '#ask-q'; ui.render(); return; }
-    const id = ui.store.addCustomTrack({ question: q, spec: r.spec, source: 'gemini' });
+    const id = ui.store.addCustomTrack({ question, spec: r.spec, source: 'gemini' });
+    ui.askClarify = null; ui.drafts['ask-d'] = '';
     ui.drafts['ask-q'] = '';
     ui.go(ui.link('workspace', { track: id, problem: 'q' }));
   };

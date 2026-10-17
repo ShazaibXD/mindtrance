@@ -26,6 +26,8 @@
       case 'LEARNING': return { text: 'Completed a lesson on ' + c + d(ev.before, ev.after), tone: 'sage' };
       case 'RECOVERY_STARTED': return { text: 'Started recovery for ' + c, tone: 'sage' };
       case 'MASTERY_VERIFIED': return { text: 'Verified mastery of ' + c + d(ev.before, ev.after), tone: 'mastered' };
+      case 'HINT': return { text: 'Asked for hint ' + ev.level + ' on ' + c, tone: 'sage' };
+      case 'EXPLANATION': return { text: 'Asked for ' + (ev.mode === 'TEACH_FROM_BASICS' ? 'a from-the-basics walkthrough' : 'an explanation') + ' of ' + c, tone: 'sage' };
       case 'ESCALATED': return { text: 'Stepped back to a worked solution' + (ev.conceptId ? ' and flagged ' + c + ' for review' : ''), tone: 'verify' };
       case 'VERIFICATION_FAILED': return { text: 'Verification on ' + c + ' showed the gap remains', tone: 'gap' };
       default: return { text: ev.type, tone: '' };

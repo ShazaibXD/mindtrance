@@ -48,6 +48,7 @@
           else if (down.has(par.id) && down.has(c.id)) cls += ' hl-down';
           else cls += ' dim';
         }
+        if (par.confidence < 0.6) cls += ' uncertain';
         if (states[par.id].status === 'CONFIRMED_GAP' && (states[c.id].status === 'BLOCKED' || states[c.id].status === 'CONFIRMED_GAP')) cls += ' broken';
         edges += '<path class="' + cls + '" d="M' + x1 + ' ' + y1 + ' C' + x1 + ' ' + (y1 + dy) + ' ' + x2 + ' ' + (y2 - dy) + ' ' + x2 + ' ' + y2 + '" stroke-width="' + (1 + par.weight * 2).toFixed(1) + '" marker-end="url(#' + marker + ')"><title>' + U.esc(gr.byId.get(par.id).name + ' is a prerequisite of ' + c.name + ' (strength ' + par.weight + ')') + '</title></path>';
       }

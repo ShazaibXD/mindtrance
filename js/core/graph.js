@@ -14,10 +14,11 @@
       children.set(c.id, []);
     }
     for (const c of track.concepts) {
-      for (const [pid, weight, why] of c.prereqs || []) {
+      for (const [pid, weight, why, confidence, strength] of c.prereqs || []) {
         if (!byId.has(pid)) continue; // reported by validate
-        parents.get(c.id).push({ id: pid, weight, why: why || '' });
-        children.get(pid).push({ id: c.id, weight, why: why || '' });
+        const meta = { weight, why: why || '', confidence: confidence == null ? 1 : confidence, strength: strength || 'REQUIRED' };
+        parents.get(c.id).push(Object.assign({ id: pid }, meta));
+        children.get(pid).push(Object.assign({ id: c.id }, meta));
       }
     }
     return { track, byId, parents, children };

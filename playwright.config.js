@@ -11,6 +11,6 @@ module.exports = defineConfig({
   fullyParallel: true,
   retries: 0,
   reporter: [['list']],
-  use: { baseURL: 'http://127.0.0.1:4174', channel, headless: true, trace: 'retain-on-failure' },
+  use: { testIdAttribute: 'data-testid', baseURL: 'http://127.0.0.1:4174', channel, headless: true, trace: 'retain-on-failure' },
   webServer: { command: 'node tests/e2e/serve.js 4174', url: 'http://127.0.0.1:4174', reuseExistingServer: true, timeout: 15000 },
 });

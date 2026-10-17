@@ -10,6 +10,9 @@
   ui.wsError = '';
   ui.vError = '';
   ui.stageNote = null;
+  ui.mode = 'SOLVE_WITH_ME';
+  ui.hints = {};
+  ui.reasonError = '';
 
   function context(route) {
     const store = ui.store;
@@ -53,8 +56,22 @@
       return '<div class="card stack" style="--gap-y:10px"><h2 class="h3">Your attempt</h2><div><p class="label">Final answer</p><pre class="quote">' + esc(s.attempt.answer) + '</pre></div>' + (s.attempt.working.trim() ? '<div><p class="label">Working</p><pre class="quote">' + esc(s.attempt.working) + '</pre></div>' : '') + '</div>';
     }
     const draftKey = ctx.track.id + ':' + ctx.def.id;
+    const mode = MT.flow.MODES.find((m) => m.id === ui.mode) || MT.flow.MODES[0];
+    const chips = '<div class="chips" role="group" aria-label="What would you like to do?">' + MT.flow.MODES.map((m) => '<button class="chip" type="button" data-action="set-mode" data-id="' + m.id + '" aria-pressed="' + (m.id === mode.id) + '" title="' + esc(m.hint) + '" data-fk="mode-' + m.id + '">' + esc(m.label) + '</button>').join('') + '</div><p class="hint">' + esc(mode.hint) + '</p>';
+    if (mode.id === 'GIVE_HINT') {
+      const shown = ui.hints[draftKey] || [];
+      return '<section class="card stack" style="--gap-y:12px" aria-labelledby="att-h"><h2 id="att-h" class="h3">Your attempt</h2>' + chips + lockBanner
+        + (shown.length ? '<ol class="steps" data-testid="hints">' + shown.map((h) => '<li class="math">' + fmt(h.text) + '</li>').join('') + '</ol>' : '<p class="muted">Hints never give the answer and never change your mastery estimates.</p>')
+        + '<div class="row">' + (shown.length < 3 ? '<button class="btn primary" type="button" data-action="hint-next" data-fk="hint-next">' + (shown.length ? 'Another hint (' + (shown.length + 1) + ' of 3)' : 'Show a hint') + '</button>' : '<span class="muted small">That is all three hints. Try the problem, or ask for an explanation.</span>')
+        + '<button class="btn" type="button" data-action="set-mode" data-id="SOLVE_WITH_ME">Attempt it now</button></div></section>';
+    }
+    if (mode.id === 'EXPLAIN_CONCEPT' || mode.id === 'TEACH_FROM_BASICS') {
+      return '<section class="card stack" style="--gap-y:12px" aria-labelledby="att-h"><h2 id="att-h" class="h3">Your attempt</h2>' + chips
+        + '<p class="muted">' + (mode.id === 'EXPLAIN_CONCEPT' ? 'You will get the explanation straight away, with an optional quick check. No questions first.' : 'You will be taken through every prerequisite in dependency order, ending at the idea this problem tests.') + '</p>'
+        + '<div><button class="btn primary" type="button" data-action="start-explain" data-fk="start-explain">' + (mode.id === 'EXPLAIN_CONCEPT' ? 'Explain it' : 'Teach me from the basics') + '</button></div></section>';
+    }
     const demoBtn = store.profile().demo && !ctx.track.custom && !locked.length ? '<button class="btn sm" type="button" data-action="demo-fill" data-fk="demo-fill">Fill in the demo wrong attempt</button>' + (ctx.track.id === 'eee-transformers' && ctx.def.id === 'tx-secondary-current' ? '<button class="btn sm" type="button" data-action="demo-fill-working" data-fk="demo-fill-working">Fill in with working</button>' : '') : '';
-    return '<form class="card stack" data-form="attempt" novalidate style="--gap-y:14px"><h2 class="h3">Your attempt</h2>' + lockBanner
+    return '<form class="card stack" data-form="attempt" novalidate style="--gap-y:14px"><h2 class="h3">Your attempt</h2>' + chips + lockBanner
       + ui.answerBox('a', problem, draftKey, ui.wsError)
       + '<div class="row"><button class="btn primary" type="submit" data-fk="attempt-submit"' + (locked.length || ui.busy ? ' aria-disabled="true" disabled' : '') + '>' + (ui.busy ? '<span class="spin" aria-hidden="true"></span>Reading your work' : 'Submit attempt') + '</button>' + demoBtn + '</div>'
       + (ui.busy ? '<p class="hint" role="status">Asking Gemini to read your answer.</p>' : '') + '</form>';
@@ -67,7 +84,7 @@
     const store = ui.store;
     const note = ui.stageNote;
     const focusId = ctx.session && ctx.session.gap ? ctx.session.gap.conceptId : (ctx.session && ctx.session.diagnosis && ctx.session.diagnosis.candidates && ctx.session.diagnosis.candidates[ctx.session.probeIndex || 0] ? ctx.session.diagnosis.candidates[ctx.session.probeIndex || 0].id : ctx.track.target);
-    return '<div class="page-head"><div><p class="eyebrow">Problem workspace</p><h1 id="page-title" class="h1">' + fmt(ctx.def.title) + '</h1></div><div class="row"><span class="badge gold">' + esc(ctx.track.exam) + '</span><span class="badge">' + esc(ctx.track.subject) + '</span><span class="badge">' + esc(ctx.def.difficulty) + '</span></div></div>'
+    return '<div class="page-head"><div><p class="eyebrow">Problem workspace</p><h1 id="page-title" class="h1">' + fmt(ctx.def.title) + '</h1></div><div class="row"><span class="badge gold">' + esc(ctx.track.exam) + '</span><span class="badge">' + esc(ctx.track.subject) + '</span><span class="badge">' + esc(ctx.def.difficulty) + '</span>' + (ctx.track.analysis ? '<span class="badge" title="Question type as read by the map builder">' + esc(ctx.track.analysis.question_type.replace(/_/g, ' ').toLowerCase()) + '</span><span class="badge">' + esc(ctx.track.analysis.education_level) + '</span>' : '') + '</div></div>'
       + '<div class="ws"><div class="stack" style="--gap-y:16px">' + selectors(ctx)
       + '<section class="card" aria-labelledby="prob-h"><p class="eyebrow" id="prob-h">Problem</p><p class="problem-text math">' + fmt(problem.statement) + '</p></section>'
       + attemptCard(ctx, problem) + '</div>'
@@ -137,7 +154,7 @@
       if (r.ok) override = r.value; else aiNote = '<p class="small">' + esc(r.error) + '</p>';
     }
     const session = MT.flow.startSession(ui.store, ctx.track.id, ctx.def.id);
-    const res = MT.flow.submitAttempt(ui.store, session.id, answer, working, { override, judgement });
+    const res = MT.flow.submitAttempt(ui.store, session.id, answer, working, { override, judgement, mode: ui.mode });
     if (!res.ok) { ui.wsError = res.error; ui.render(); return; }
     if (aiNote) note('info', '<strong>Gemini was not used.</strong>' + aiNote);
     else if (override) note('info', '<strong>The rule-based engine had no signature for this answer, so Gemini classified it.</strong><p class="small">Its output was validated against the schema and the knowledge graph. Correctness was still checked deterministically.</p>');
@@ -205,8 +222,55 @@
     const clearDrafts = (s.result && s.result.verified) || s.state === 'ATTEMPT_CORRECT';
     MT.flow.tryAgain(ui.store, s.id);
     if (clearDrafts) { delete ui.drafts['ans:' + ctx.track.id + ':' + ctx.def.id]; delete ui.drafts['wrk:' + ctx.track.id + ':' + ctx.def.id]; }
-    ui.wsError = ''; ui.focusAfter = '#a-ans';
+    ui.wsError = ''; ui.mode = 'SOLVE_WITH_ME'; ui.focusAfter = '#a-ans';
     ui.go(wsLink(ctx.track.id, ctx.def.id));
+  };
+
+  /* ---------- learning modes ---------- */
+  ui.actions['set-mode'] = (el) => { ui.mode = el.dataset.id; ui.wsError = ''; ui.focusAfter = '[data-fk="mode-' + ui.mode + '"]'; ui.render(); };
+  ui.actions['hint-next'] = () => {
+    const ctx = context(ui.route);
+    const key = ctx.track.id + ':' + ctx.def.id;
+    const shown = ui.hints[key] || (ui.hints[key] = []);
+    if (shown.length >= 3) return;
+    shown.push(MT.flow.getHint(ui.store, ctx.track.id, ctx.def.id, shown.length + 1));
+    ui.focusAfter = '[data-fk="hint-next"]'; ui.render();
+  };
+  ui.actions['start-explain'] = () => {
+    const ctx = context(ui.route);
+    const session = MT.flow.startSession(ui.store, ctx.track.id, ctx.def.id);
+    const r = MT.flow.startExplanation(ui.store, session.id, ui.mode);
+    if (!r.ok) { ui.toast(r.error, 'bad'); return; }
+    ui.focusAfter = '#stage-title';
+    ui.go(sessionLink(session.id));
+  };
+  ui.forms.explainCheck = (form) => {
+    const ctx = context(ui.route);
+    const r = MT.flow.answerExplainCheck(ui.store, ctx.session.id, Number(form.elements.opt.value));
+    if (!r.ok) { ui.toast(r.error, 'bad'); return; }
+    note(r.correct ? 'good' : 'info', '<strong>' + (r.correct ? 'Yes.' : 'Not quite.') + '</strong><p class="small">' + fmt(r.feedback) + '</p>');
+    ui.render();
+  };
+  ui.forms.reasoning = async (form) => {
+    const ctx = context(ui.route);
+    const s = ctx.session;
+    const reasoning = form.elements.reasoning.value;
+    const cfg = ui.store.settings();
+    ui.reasonError = '';
+    let judgement;
+    if (reasoning.trim().length < 8) { ui.reasonError = 'Write a sentence or two about how you got there.'; ui.focusAfter = '#r-ans'; ui.render(); return; }
+    if (ctx.track.source === 'fixture') judgement = MT.custom.fixtureJudge(s.attempt.answer + ' ' + reasoning);
+    else {
+      if (!cfg.geminiKey) { ui.reasonError = 'Judging needs a Gemini key. Add one in Settings.'; ui.render(); return; }
+      ui.busy = true; ui.render();
+      const r = await MT.ai.judgeOpen({ apiKey: cfg.geminiKey }, ctx.track, ctx.track.question, s.attempt.answer, reasoning);
+      ui.busy = false;
+      if (!r.ok) { ui.reasonError = r.error; ui.render(); return; }
+      judgement = r.value;
+    }
+    const res = MT.flow.submitReasoning(ui.store, s.id, reasoning, judgement);
+    if (!res.ok) { ui.reasonError = res.error; ui.render(); return; }
+    ui.focusAfter = '#stage-title'; ui.render();
   };
 
   /* ---------- demo ---------- */

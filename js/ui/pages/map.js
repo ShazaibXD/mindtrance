@@ -19,10 +19,10 @@
     const rec = ui.store.record(track.id, selected);
     const parents = gr.parents.get(selected);
     const kids = gr.children.get(selected);
-    const row = (id, why, w, dir) => {
+    const row = (id, why, w, dir, meta) => {
       const n = gr.byId.get(id);
       const s = states[id];
-      return '<li><div><button class="linkbtn" type="button" data-action="map-select" data-concept="' + esc(id) + '">' + esc(n.name) + '</button> ' + ui.badge(ui.STATUS[s.status].cls, ui.STATUS[s.status].short) + '<p class="small muted">' + fmt(why || (dir === 'up' ? 'Needed before ' + c.name : 'Depends on ' + c.name)) + '</p></div><span class="mono small faint" title="Dependency strength">' + w.toFixed(2) + '</span></li>';
+      return '<li><div><button class="linkbtn" type="button" data-action="map-select" data-concept="' + esc(id) + '">' + esc(n.name) + '</button> ' + ui.badge(ui.STATUS[s.status].cls, ui.STATUS[s.status].short) + '<p class="small muted">' + fmt(why || (dir === 'up' ? 'Needed before ' + c.name : 'Depends on ' + c.name)) + '</p>' + (meta && meta.confidence < 0.6 ? '<p class="small"><span class="badge verify">uncertain relationship</span> Treated as a parallel foundation, not a strict order.</p>' : '') + '</div><span class="mono small faint" title="Dependency strength">' + w.toFixed(2) + '</span></li>';
     };
     const events = ui.store.events().filter((e) => e.trackId === track.id && e.conceptId === selected && ['OBSERVATION', 'LEARNING', 'MASTERY_VERIFIED'].includes(e.type)).slice(-4).reverse();
     let action = '';
@@ -40,8 +40,8 @@
       + '<div><div class="row between small"><span class="label">Mastery estimate</span><span class="mono">' + ui.f2(st.p) + '</span></div>' + ui.meter(st.p, meta.cls)
       + '<p class="hint">' + esc(meta.help) + ' ' + (rec.obs ? rec.obs + ' observation' + (rec.obs > 1 ? 's' : '') + ', ' + rec.fails + ' missed.' : 'No evidence yet: this is a starting assumption.') + '</p></div>'
       + action
-      + '<div><p class="label">Prerequisites</p>' + (parents.length ? '<ul class="list small">' + parents.map((p) => row(p.id, p.why, p.weight, 'up')).join('') + '</ul>' : '<p class="muted small">Foundational: nothing upstream.</p>') + '</div>'
-      + '<div><p class="label">Needed for</p>' + (kids.length ? '<ul class="list small">' + kids.map((k) => row(k.id, k.why, k.weight, 'down')).join('') + '</ul>' : '<p class="muted small">This is the target concept of the track.</p>') + '</div>'
+      + '<div><p class="label">Prerequisites</p>' + (parents.length ? '<ul class="list small">' + parents.map((p) => row(p.id, p.why, p.weight, 'up', p)).join('') + '</ul>' : '<p class="muted small">Foundational: nothing upstream.</p>') + '</div>'
+      + '<div><p class="label">Needed for</p>' + (kids.length ? '<ul class="list small">' + kids.map((k) => row(k.id, k.why, k.weight, 'down', k)).join('') + '</ul>' : '<p class="muted small">This is the target concept of the track.</p>') + '</div>'
       + (events.length ? '<div><p class="label">Recent evidence</p><ul class="list small">' + events.map((e) => '<li><span>' + esc(ui.describeEvent(e).text) + '</span><span class="faint">' + ui.ago(e.at) + '</span></li>').join('') + '</ul></div>' : '')
       + '<div class="row"><a class="btn sm" href="' + ui.link('workspace', { track: track.id, problem: track.problems[0].id }) + '">Open a problem on this track</a></div></aside>';
   }

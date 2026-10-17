@@ -71,6 +71,33 @@
       + '<div><button class="btn primary" type="submit" data-fk="probe-submit">Submit probe answer</button></div></form>';
   }
 
+  const LEVEL_LABEL = ['', 'Foundation', 'Link', 'Target idea'];
+
+  function explanationCard(session, store) {
+    const track = MT.data.track(session.trackId);
+    const ex = session.explain;
+    const blocks = ex.concepts.map((id, i) => {
+      const c = conceptOf(session, id);
+      const L = c.lesson;
+      return '<div class="card elev stack" style="--gap-y:8px"><div class="row between"><h4>' + (ex.concepts.length > 1 ? (i + 1) + '. ' : '') + esc(c.name) + '</h4><span class="badge">' + LEVEL_LABEL[c.level] + '</span></div>'
+        + '<p class="math">' + fmt(L.explain) + '</p><p class="small muted">Why it matters here: ' + fmt(L.why) + '</p>'
+        + '<p class="small"><strong>Common trap:</strong> ' + fmt(L.misconception) + '</p><p class="small math"><strong>Example.</strong> ' + fmt(L.example.q) + ' ' + fmt(L.example.a) + '</p></div>';
+    }).join('');
+    const chk = MT.flow.currentExplainCheck(session);
+    return '<div class="card stack" style="--gap-y:12px"><div class="row between"><h3 id="stage-title" tabindex="-1">' + (ex.mode === 'TEACH_FROM_BASICS' ? 'From the basics up' : 'The concept') + '</h3><span class="badge sage">direct explanation</span></div>'
+      + '<p class="muted small">You asked for an explanation, so there are no questions first. Nothing here changes your mastery estimates unless you take the optional check.</p>' + blocks
+      + (ex.checkDone ? '<div class="notice good">' + ui.icon('check') + '<p class="small">Quick check passed.</p></div>'
+        : '<form class="stack" data-form="explainCheck" style="--gap-y:10px"><p class="label">Optional quick check: ' + esc(chk.concept.name) + '</p><p class="math problem-text">' + fmt(chk.mcq.q) + '</p>' + mcq('opt', chk.mcq) + '<div><button class="btn" type="submit" data-fk="explain-check">Check my understanding</button></div></form>')
+      + '<div class="row"><button class="btn primary" type="button" data-action="try-again" data-fk="back-to-problem">Back to the problem</button><a class="btn" href="' + ui.link('map', { track: session.trackId }) + '">Open the map</a></div></div>';
+  }
+
+  function reasoningCard(session) {
+    return '<form class="card stack" data-form="reasoning" style="--gap-y:12px"><h3 id="stage-title" tabindex="-1">Right answer. One quick check</h3>'
+      + '<div class="notice good">' + ui.icon('check') + '<p class="small">The answer looks right. A right answer alone does not show the idea behind it, so nothing is credited yet.</p></div>'
+      + '<div class="field"><label for="r-ans">How did you get there?</label><textarea class="textarea prose" id="r-ans" name="reasoning" maxlength="1500" placeholder="A sentence or two is enough" required></textarea><div class="error-text" role="alert">' + esc(ui.reasonError || '') + '</div></div>'
+      + '<div><button class="btn primary" type="submit" data-fk="reasoning-submit"' + (ui.busy ? ' disabled' : '') + '>' + (ui.busy ? '<span class="spin" aria-hidden="true"></span>Reading your reasoning' : 'Submit my reasoning') + '</button></div></form>';
+  }
+
   function slipCard(session) {
     const d = session.diagnosis;
     const msg = {
@@ -187,7 +214,7 @@
     const labels = ['Submit the wrong attempt', 'Read the diagnosis, then answer the probe (fail it on purpose)', 'Recover: lesson, then practice', 'Solve the fresh verification problem', 'See mastery and the graph update', 'Retry the original problem and solve it'];
     const st = session ? session.state : 'READY';
     const verified = !!(session && session.result && session.result.verified);
-    const cur = { READY: verified ? 5 : 0, ATTEMPT_SUBMITTED: 0, ERROR_CLASSIFIED: 1, PROBE_REQUIRED: 1, RETRY_REQUIRED: verified ? 5 : 1, GAP_CONFIRMED: 2, RECOVERY_REQUIRED: 2, RECOVERY_IN_PROGRESS: 2, VERIFICATION_REQUIRED: 3, MASTERY_VERIFIED: 4, ATTEMPT_CORRECT: 6 }[st];
+    const cur = { READY: verified ? 5 : 0, ATTEMPT_SUBMITTED: 0, ERROR_CLASSIFIED: 1, PROBE_REQUIRED: 1, RETRY_REQUIRED: verified ? 5 : 1, DIRECT_EXPLANATION: 0, REASONING_CHECK: 0, ESCALATED_TO_SOLUTION: 1, GAP_CONFIRMED: 2, RECOVERY_REQUIRED: 2, RECOVERY_IN_PROGRESS: 2, VERIFICATION_REQUIRED: 3, MASTERY_VERIFIED: 4, ATTEMPT_CORRECT: 6 }[st];
     return '<aside class="card demo" aria-label="Judge demo guide"><div class="row between"><h3>Judge demo guide</h3><span class="badge gold">demo fixture</span></div>'
       + '<p class="small muted">The wrong attempt is a pre-written fixture with only a final answer, which is thin evidence, so a probe comes first. "Fill in with working" adds the steps: strong evidence skips the probe. The diagnosis, mastery numbers and graph are computed live by the rule-based engine. Nothing in this demo is AI-generated.</p>'
       + '<ol class="steps small">' + labels.map((l, i) => '<li' + (i === cur ? ' class="cur" aria-current="step"' : '') + (i < cur ? ' style="opacity:.55"' : '') + '>' + esc(l) + '</li>').join('') + '</ol>'
@@ -204,6 +231,8 @@
     else if (session.state === 'RETRY_REQUIRED') body = (session.diagnosis ? diagnosisCard(session) : '') + slipCard(session);
     else if (session.state === 'GAP_CONFIRMED') body = (session.diagnosis ? diagnosisCard(session) : '') + gapCard(session);
     else if (session.state === 'ESCALATED_TO_SOLUTION') body = escalationCard(session);
+    else if (session.state === 'DIRECT_EXPLANATION') body = explanationCard(session, store);
+    else if (session.state === 'REASONING_CHECK') body = reasoningCard(session);
     else if (session.state === 'RECOVERY_REQUIRED') body = '<div class="card stack" style="--gap-y:12px"><h3 id="stage-title" tabindex="-1">The gap is still open</h3><p class="muted">Review the lesson again, then try another fresh problem.</p><div><button class="btn primary" type="button" data-action="start-recovery" data-fk="start-recovery">Return to the lesson</button></div></div>';
     else if (session.state === 'RECOVERY_IN_PROGRESS') body = recoveryCard(session, store);
     else if (session.state === 'VERIFICATION_REQUIRED') body = verificationCard(session);

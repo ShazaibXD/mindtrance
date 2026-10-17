@@ -6,7 +6,8 @@
   const MT = (g.MT = g.MT || {});
 
   const ID_RE = /^[a-z][a-z0-9_]{1,31}$/;
-  const EDGE_WEIGHT = 0.85;
+  const EDGE_WEIGHT = { REQUIRED: 0.9, SUPPORTING: 0.5 };
+  const QUESTION_TYPES = ['NUMERICAL_PROBLEM', 'MULTIPLE_CHOICE', 'CONCEPT_EXPLANATION', 'CODE_AND_DEBUGGING', 'PROOF_OR_DERIVATION', 'TEXT_COMPREHENSION', 'ESSAY_OR_WRITING', 'AMBIGUOUS_FRAGMENT'];
 
   const clean = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
   const isStr = (v) => typeof v === 'string' && clean(v, 5).length > 0;
@@ -27,6 +28,9 @@
   function validateSpec(raw) {
     const fail = (error) => ({ ok: false, error: 'The generated map was rejected: ' + error });
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return fail('wrong shape.');
+    if (raw.clarification_needed === true || raw.question_type === 'AMBIGUOUS_FRAGMENT') {
+      return { ok: false, clarify: true, error: clean(raw.clarification_question, 200) || 'Could you add a little more detail to the question?' };
+    }
     for (const k of ['title', 'subject', 'exam', 'target_node']) if (!isStr(raw[k])) return fail('missing ' + k + '.');
     if (!Array.isArray(raw.nodes) || raw.nodes.length < 4 || raw.nodes.length > 6) return fail('it needs 4 to 6 concepts.');
     const ids = new Set();
@@ -57,7 +61,11 @@
         id: n.id, label: clean(n.label, 60), level: n.level, summary: clean(n.summary, 240), prior: n.prior,
         lesson: { explain: clean(L.explain, 500), why: clean(L.why, 400), misconception: clean(L.misconception, 400), example_q: clean(L.example_q, 300), example_a: clean(L.example_a, 400) },
         probe: probe.value, practice: practice.value, verify,
-        prereqs: n.prereqs.map((p) => ({ id: p && p.id, why: clean(p && p.why, 200) })),
+        prereqs: n.prereqs.map((p) => ({
+          id: p && p.id, why: clean(p && p.why, 200),
+          strength: p && p.strength === 'SUPPORTING' ? 'SUPPORTING' : 'REQUIRED',
+          confidence: p && typeof p.confidence === 'number' && p.confidence >= 0 && p.confidence <= 1 ? p.confidence : 0.8,
+        })),
       });
     }
     const target = String(raw.target_node).trim();
@@ -70,10 +78,30 @@
         if (p.id === n.id) return fail(n.id + ' depends on itself.');
       }
     }
-    const spec = { title: clean(raw.title, 120), subject: clean(raw.subject, 60), exam: clean(raw.exam, 40), target_node: target, nodes };
+    const src = raw.analysis && typeof raw.analysis === 'object' ? raw.analysis : raw; // stored specs nest it, model output is flat
+    const analysis = {
+      question_type: QUESTION_TYPES.includes(src.question_type) ? src.question_type : 'CONCEPT_EXPLANATION',
+      education_level: clean(src.education_level, 40) || 'Not stated',
+      language: clean(src.language, 20) || 'en',
+    };
+    const spec = { title: clean(raw.title, 120), subject: clean(raw.subject, 60), exam: clean(raw.exam, 40), target_node: target, analysis, nodes };
     const problems = MT.graph.validate(buildTrack({ id: 'ask-validate', spec, question: 'validation', source: 'check' }));
     if (problems.length) return fail(problems[0] + '.');
     return { ok: true, spec };
+  }
+
+  /* Deterministic check for a question that cannot be answered as written (spec scenario: a calculation with no values). */
+  function precheck(question) {
+    const q = String(question || '').trim();
+    const wantsCalc = /\b(calculate|compute|find|determine|work out)\b/i.test(q) || /\bwhat is the (value|current|voltage|area|volume|speed|velocity|force|resistance|power|mass|energy|pressure|temperature)\b/i.test(q);
+    const conceptual = /\b(explain|why|how|describe|define|discuss|compare|difference|what is a|what are|essay|analy[sz]e|evaluate whether)\b/i.test(q);
+    const hasNumbers = /\d/.test(q);
+    const hasMath = /[=^+*\/]|\b(squared|cubed|sin|cos|tan|log|ln|integral|derivative|equation|function|expression)\b/i.test(q);
+    const refsFigure = /\b(circuit|diagram|figure|graph|table|picture)\b/i.test(q);
+    if (wantsCalc && !hasNumbers && !hasMath && !conceptual) {
+      return { clarify: true, question: 'I can help with that. Could you share the values given in the problem (numbers and units)' + (refsFigure ? ', or describe what the diagram shows?' : '?') };
+    }
+    return { clarify: false };
   }
 
   const hash = (s) => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return (h >>> 0).toString(36); };
@@ -86,7 +114,7 @@
     const { spec, question } = entry;
     const concepts = spec.nodes.map((n) => ({
       id: n.id, name: n.label, level: n.level, prior: n.prior, desc: n.summary,
-      prereqs: n.prereqs.map((p) => [p.id, EDGE_WEIGHT, p.why]),
+      prereqs: n.prereqs.map((p) => [p.id, EDGE_WEIGHT[p.strength || 'REQUIRED'], p.why, p.confidence != null ? p.confidence : 0.8, p.strength || 'REQUIRED']),
       lesson: { explain: n.lesson.explain, why: n.lesson.why, misconception: n.lesson.misconception, example: { q: n.lesson.example_q, a: n.lesson.example_a } },
       probe: { q: n.probe.question, options: n.probe.options.slice(), correct: n.probe.correct_index },
       practice: { q: n.practice.question, options: n.practice.options.slice(), correct: n.practice.correct_index, feedback: n.practice.feedback },
@@ -101,7 +129,7 @@
     return {
       id: entry.id, domainId: 'ask', custom: true, source: entry.source || 'gemini', question,
       exam: spec.exam, subject: spec.subject, topic: spec.title, blurb: 'Built from your own question.',
-      target: spec.target_node, concepts, verification,
+      target: spec.target_node, analysis: spec.analysis || null, concepts, verification,
       problems: [{
         id: 'q', title: shorten(question), target: spec.target_node, difficulty: 'Open-ended',
         gen: () => ({ statement: question, answer: { kind: 'open', display: '' }, solution: [], patterns: [], keywords: [], setup: [], unitSensitive: false }),
@@ -114,6 +142,7 @@
   const FIXTURE_QUESTION = 'Explain how the Treaty of Versailles contributed to the outbreak of the Second World War.';
   const FIXTURE_SPEC = {
     title: 'Versailles and the road to WWII', subject: 'History', exam: 'Essay question', target_node: 'versailles_wwii',
+    analysis: { question_type: 'ESSAY_OR_WRITING', education_level: 'Secondary school', language: 'en' },
     nodes: [
       {
         id: 'causal_reasoning', label: 'Causes versus triggers', level: 1, prior: 0.65, summary: 'Separating long-term conditions from the events that set a war off.',
@@ -145,7 +174,7 @@
         probe: Q('The "stab in the back" myth claimed that:', ['Germany was betrayed at home rather than beaten in the field', 'Germany had won the war', 'The USA had attacked Germany'], 0),
         practice: Q('Why did the Nazis gain from the treaty in the early 1930s?', ['They promised to overturn it and restore national pride', 'They had signed it', 'They wanted to pay reparations in full'], 0, 'The treaty gave them a ready grievance, and the Depression gave it an audience.'),
         verify: [Q('Which best explains why the Depression boosted extremist parties?', ['Hardship made radical promises more attractive', 'It made the treaty more popular', 'It ended unemployment'], 0), Q('Weimar politicians were unpopular partly because they were:', ['associated with signing the treaty', 'in favour of rearmament', 'members of the Nazi party'], 0)],
-        prereqs: [{ id: 'ww1_settlement', why: 'The grievances are about specific treaty terms.' }, { id: 'reparations', why: 'Economic hardship intensified the anger.' }],
+        prereqs: [{ id: 'ww1_settlement', why: 'The grievances are about specific treaty terms.' }, { id: 'reparations', why: 'Economic hardship intensified the anger. Historians weigh this link differently, so it is a supporting foundation rather than a strict step.', strength: 'SUPPORTING', confidence: 0.55 }],
       },
       {
         id: 'versailles_wwii', label: 'Versailles and the origins of WWII', level: 3, prior: 0.45, summary: 'Building a balanced causal argument from the treaty to 1939.',
@@ -176,6 +205,6 @@
     return { engine, matchedBy: 'rubric', isCorrect: false, category: 'PREREQUISITE_GAP', confidence: 0.25, hintConcept: 'causal_reasoning', evidence: [label + 'the answer does not yet make a causal claim, so it is not clear which concept is missing.'] };
   }
 
-  MT.custom = { validateSpec, buildTrack, makeId, shorten, FIXTURE: { question: FIXTURE_QUESTION, spec: FIXTURE_SPEC, source: 'fixture' }, fixtureJudge };
+  MT.custom = { precheck, QUESTION_TYPES, validateSpec, buildTrack, makeId, shorten, FIXTURE: { question: FIXTURE_QUESTION, spec: FIXTURE_SPEC, source: 'fixture' }, fixtureJudge };
   if (typeof module !== 'undefined' && module.exports) module.exports = MT.custom;
 })(typeof window !== 'undefined' ? window : globalThis);

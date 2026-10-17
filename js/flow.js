@@ -110,11 +110,24 @@
     s.attemptCount += 1;
     s.attempt = { answer: String(answer), working: String(working || ''), at: now };
 
+    // A right answer on an open question with no working shown does not yet show the idea behind it.
+    if (res.category === 'CORRECT_UNDERSTANDING' && problem.answer.kind === 'open' && !String(working || '').trim() && String(answer).trim().length < 60 && !(opts && opts.skipReasoningCheck)) {
+      MT.machine.transition(s, 'REASONING_CHECK', 'right answer, reasoning not shown', now);
+      s.diagnosis = Object.assign({}, res, { category: 'CORRECT_ANSWER_UNVERIFIED_REASONING', tier: 'SUSPECTED' });
+      logEvent(store, s, 'ATTEMPT', { category: 'CORRECT_ANSWER_UNVERIFIED_REASONING', correct: false, conceptId: null, matchedBy: res.matchedBy, mode: opts && opts.mode });
+      store.touch(s);
+      return { ok: true, session: s, diagnosis: s.diagnosis };
+    }
+    return settle(store, s, res, track, problem, now, opts && opts.mode);
+  }
+
+  /* Everything that happens once an attempt has a classification: mastery, routing, probes. */
+  function settle(store, s, res, track, problem, now, mode) {
     if (res.category === 'CORRECT_UNDERSTANDING') {
       MT.machine.transition(s, 'ATTEMPT_CORRECT', 'verified correct', now);
       s.diagnosis = res;
       s.result = { ...(s.result || {}), solved: true };
-      logEvent(store, s, 'ATTEMPT', { category: 'CORRECT_UNDERSTANDING', correct: true });
+      logEvent(store, s, 'ATTEMPT', { category: 'CORRECT_UNDERSTANDING', correct: true, mode });
       const o = store.observe(s.trackId, track.target, true, { sessionId: s.id, problemId: s.problemId, source: 'attempt' });
       s.result.targetBefore = o.before;
       s.result.targetAfter = o.after;
@@ -125,7 +138,7 @@
     MT.machine.transition(s, 'ERROR_CLASSIFIED', res.category, now);
     s.diagnosis = res;
     s.probeIndex = 0;
-    logEvent(store, s, 'ATTEMPT', { category: res.category, tier: res.tier, correct: false, conceptId: res.hintConcept || null, matchedBy: res.matchedBy });
+    logEvent(store, s, 'ATTEMPT', { category: res.category, tier: res.tier, correct: false, conceptId: res.hintConcept || null, matchedBy: res.matchedBy, mode });
 
     let candidates = res.candidates || [];
     if (res.category === 'CALCULATION_OR_UNIT_ERROR' && res.hintConcept) {
@@ -376,15 +389,101 @@
     if (!s) return null;
     const now = store.now();
     if (s.state === 'MASTERY_VERIFIED') MT.machine.transition(s, 'RETRY_REQUIRED', 'retry original', now);
-    if (s.state === 'ESCALATED_TO_SOLUTION') MT.machine.transition(s, 'READY', 'back to the problem', now);
+    if (s.state === 'ESCALATED_TO_SOLUTION' || s.state === 'DIRECT_EXPLANATION') MT.machine.transition(s, 'READY', 'back to the problem', now);
     if (s.state === 'ATTEMPT_CORRECT' || s.state === 'RETRY_REQUIRED') MT.machine.transition(s, 'READY', 'new attempt', now);
     if (s.state === 'READY') {
       if (s.attempt) s.history.push({ attempt: s.attempt, category: s.diagnosis && s.diagnosis.category });
-      s.attempt = null; s.diagnosis = null; s.probes = []; s.probeIndex = 0; s.gap = null; s.recovery = null; s.verification = null; s.escalation = null; s.recoveryLoops = 0;
+      s.attempt = null; s.diagnosis = null; s.probes = []; s.probeIndex = 0; s.gap = null; s.recovery = null; s.verification = null; s.escalation = null; s.recoveryLoops = 0; s.explain = null;
       s.result = Object.assign({}, s.result, { solved: false });
     }
     store.touch(s);
     return s;
+  }
+
+  /* ---------- learning modes (spec 4, stage 1) ---------- */
+  const MODES = [
+    { id: 'SOLVE_WITH_ME', label: 'Solve with me', hint: 'Attempt it; I diagnose what is missing.', attempt: true },
+    { id: 'CHECK_ANSWER', label: 'Check my answer', hint: 'Tell me if I am right, and why not if I am not.', attempt: true },
+    { id: 'DIAGNOSE_MISTAKE', label: 'Why do I keep getting this wrong?', hint: 'Look at my history on this concept too.', attempt: true },
+    { id: 'GIVE_HINT', label: 'Give me a hint', hint: 'A nudge, no answer, no penalty.', attempt: false },
+    { id: 'EXPLAIN_CONCEPT', label: 'Explain this concept', hint: 'Skip the questions and explain it.', attempt: false },
+    { id: 'TEACH_FROM_BASICS', label: 'Teach me from the basics', hint: 'Start at the foundations and build up.', attempt: false },
+    { id: 'EXAM_PREP', label: 'Exam prep', hint: 'Same checks, framed as exam practice.', attempt: true },
+  ];
+
+  /* Three progressive hints from the concept most likely to be the obstacle. No state change and no mastery change. */
+  function getHint(store, trackId, problemId, level) {
+    const track = MT.data.track(trackId);
+    const def = track.problems.find((p) => p.id === problemId) || track.problems[0];
+    const gr = MT.graph.build(track);
+    const ranked = MT.graph.rankSuspects(gr, def.target, store.masteryMap(trackId), { includeTarget: true });
+    const concept = conceptOf(track, ranked.length ? ranked[0].id : def.target);
+    const L = Math.min(3, Math.max(1, level));
+    const text = L === 1 ? 'Think about: ' + concept.name + '. ' + concept.lesson.why
+      : L === 2 ? 'A worked example of the idea. ' + concept.lesson.example.q + ' ' + concept.lesson.example.a
+        : 'The idea in short: ' + concept.lesson.explain;
+    store.addEvent({ type: 'HINT', trackId, problemId, conceptId: concept.id, level: L });
+    store.commit();
+    return { level: L, max: 3, concept, text };
+  }
+
+  /* Direct explanation with an optional quick check. TEACH_FROM_BASICS walks the prerequisites in dependency order. */
+  function startExplanation(store, sessionId, mode) {
+    const s = store.getSession(sessionId);
+    if (!s || s.state !== 'READY') return { ok: false, error: 'Finish the current step first.' };
+    const track = trackOf(s);
+    const def = track.problems.find((p) => p.id === s.problemId) || track.problems[0];
+    const gr = MT.graph.build(track);
+    let ids = [def.target];
+    if (mode === 'TEACH_FROM_BASICS') {
+      const need = new Set([def.target, ...MT.graph.ancestors(gr, def.target).keys()]);
+      ids = MT.graph.topoOrder(gr).filter((id) => need.has(id));
+    }
+    MT.machine.transition(s, 'DIRECT_EXPLANATION', mode, store.now());
+    s.explain = { mode, concepts: ids, checkDone: false };
+    store.addEvent({ type: 'EXPLANATION', trackId: s.trackId, sessionId: s.id, problemId: s.problemId, conceptId: def.target, mode });
+    store.touch(s);
+    return { ok: true, session: s };
+  }
+
+  function currentExplainCheck(session) {
+    if (session.state !== 'DIRECT_EXPLANATION' || !session.explain) return null;
+    const track = trackOf(session);
+    const concept = conceptOf(track, session.explain.concepts[session.explain.concepts.length - 1]);
+    return { concept, mcq: presentMCQ(concept.practice, session.id + ':explain:' + (session.explain.tries || 0)) };
+  }
+
+  function answerExplainCheck(store, sessionId, optionIndex) {
+    const s = store.getSession(sessionId);
+    const chk = s && currentExplainCheck(s);
+    if (!chk) return { ok: false, error: 'There is no quick check.' };
+    const correct = optionIndex === chk.concept.practice.correct;
+    const o = store.observe(s.trackId, chk.concept.id, correct, { sessionId: s.id, source: 'explain-check', bkt: ctxParams(store, 'practice') });
+    s.explain.tries = (s.explain.tries || 0) + 1;
+    if (correct) s.explain.checkDone = true;
+    store.touch(s);
+    return { ok: true, session: s, correct, feedback: chk.concept.practice.feedback, observation: o };
+  }
+
+  /* The student explains their reasoning after a right answer; the judgement of answer plus reasoning settles it. */
+  function submitReasoning(store, sessionId, reasoning, judgement) {
+    const s = store.getSession(sessionId);
+    if (!s || s.state !== 'REASONING_CHECK') return { ok: false, error: 'No reasoning check is waiting.' };
+    const text = String(reasoning || '').trim();
+    if (text.length < 8) return { ok: false, error: 'Write a sentence or two about how you got there.' };
+    if (!judgement) return { ok: false, error: 'This needs a judgement before it can be settled.' };
+    const track = trackOf(s);
+    const problem = originalProblem(s);
+    s.attempt.working = text;
+    const mastery = store.masteryMap(s.trackId);
+    let res;
+    if (judgement.isCorrect) res = { engine: judgement.engine, category: 'CORRECT_UNDERSTANDING', confidence: judgement.confidence, evidence: judgement.evidence, matchedBy: judgement.matchedBy || 'ai', hintConcept: null, candidates: [], judged: true };
+    else {
+      const base = MT.diagnose.classify(track, problem, s.attempt.answer, text, { mastery });
+      res = applyOverride(track, base, judgement, mastery);
+      res.judged = true;
+    }
+    return settle(store, s, res, track, problem, store.now(), 'reasoning');
   }
 
   /* What the student should do next, for the dashboard. */
@@ -407,6 +506,7 @@
   }
 
   MT.flow = {
+    MODES, getHint, startExplanation, currentExplainCheck, answerExplainCheck, submitReasoning,
     ORIGINAL_SEED, MAX_PROBES, MAX_RECOVERY_LOOPS, escalate, priorGapCounts, ctxParams, originalProblem, verificationProblem, presentMCQ, lockedBy, startSession, startRecoveryFor,
     submitAttempt, currentProbe, answerProbe, beginRecovery, completeLesson, currentPractice, answerPractice,
     startVerification, submitVerification, tryAgain, nextAction,
