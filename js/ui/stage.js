@@ -28,26 +28,40 @@
     CONFIRMED: '75% or more: your own working shows the cause.',
   };
 
-  function evidenceBlock(d) {
+  function evidenceBlock(d, session) {
     const items = d.evidenceItems || [];
     return '<div><div class="row between small"><span class="label">Evidence score</span><span class="mono">' + ui.pct(d.evidenceScore != null ? d.evidenceScore : d.confidence) + '%</span></div>' + ui.meter(d.evidenceScore != null ? d.evidenceScore : d.confidence)
-      + '<p class="hint">' + esc(TIER_TEXT[d.tier] || 'A heuristic measure of how well the evidence fits, not a calibrated probability.') + '</p>'
+      + '<p class="hint">' + esc(TIER_TEXT[d.tier] || 'A heuristic measure of how well the evidence fits, not a calibrated probability.') + (session && session.gap && session.gap.confirmedBy === 'probe' ? ' The follow-up question then confirmed it.' : '') + '</p>'
       + (items.length ? '<details><summary class="small muted">How this score is built</summary><table class="tbl small"><thead><tr><th>Evidence</th><th>Reliability</th><th>Fit</th></tr></thead><tbody>' + items.map((i) => '<tr><td>' + esc(MT.diagnose.SOURCE_LABEL[i.source] || i.source) + '<br><span class="faint">' + esc(i.note) + '</span></td><td class="mono">' + ui.f2(i.w) + '</td><td class="mono">' + ui.f2(i.r) + '</td></tr>').join('') + '</tbody></table><p class="hint">Score = 1 - product of (1 - reliability x fit). A heuristic, not a calibrated probability.</p></details>' : '') + '</div>';
+  }
+
+  /* One sentence a newcomer can read without knowing any of the terms. */
+  function plainWords(d, eff, concept, session) {
+    const kind = MT.diagnose.kindOf(eff);
+    const name = concept ? concept.name : 'one concept';
+    if (kind === 'slip') return 'Your approach looks fine. A small slip changed the answer, so nothing needs to be taught.';
+    if (eff === 'AMBIGUOUS_OR_INSUFFICIENT_EVIDENCE') return 'There is not enough to be sure why this went wrong. My best guess is ' + name + ', and one short question will tell.';
+    if (session.state === 'GAP_CONFIRMED') return 'The cause is now clear: ' + name + ' is the missing piece, and that is what gets fixed first.';
+    if (kind === 'gap' || kind === 'partial') return 'This looks like a problem with ' + name + ', not with the whole topic. Checking that before anything is taught.';
+    return '';
   }
 
   function diagnosisCard(session) {
     const d = session.diagnosis;
-    const eff = MT.diagnose.effectiveOutcome(d);
+    // once a question or the working has confirmed the gap, the label is the confirmed outcome, not "not enough evidence"
+    const eff = session.gap ? d.category : MT.diagnose.effectiveOutcome(d);
     const cat = MT.diagnose.outcomeMeta(eff);
     const cls = ui.outcomeCls(eff);
     const top = d.candidates && d.candidates[session.probeIndex || 0];
     const concept = top ? conceptOf(session, top.id) : null;
     const hasCands = d.candidates && d.candidates.length > 0;
     const working = session.attempt && session.attempt.working.trim();
+    const plain = plainWords(d, eff, concept, session);
     return '<div class="card stack" style="--gap-y:12px"><div class="row between"><h3 id="stage-title" tabindex="-1">Diagnosis</h3><span class="badge ' + cls + '"><span class="dot"></span>' + esc(cat.label) + '</span></div>'
       + '<p class="muted">' + esc(cat.blurb) + '</p>'
       + (eff !== d.category ? '<p class="small">Leading hypothesis so far: <strong>' + esc(MT.diagnose.outcomeMeta(d.category).label) + '</strong>.</p>' : '')
-      + evidenceBlock(d)
+      + (plain ? '<p class="plain"><strong>In plain words:</strong> ' + esc(plain) + '</p>' : '')
+      + evidenceBlock(d, session)
       + '<div><p class="label">Evidence from your work</p><ul class="steps">' + d.evidence.map((e) => '<li>' + fmt(e) + '</li>').join('') + '</ul>'
       + (working ? '<details><summary class="small muted">Your working as submitted</summary><pre class="quote">' + esc(session.attempt.working) + '</pre></details>' : '<p class="hint">No working was submitted. Showing your steps gives the diagnosis much stronger evidence.</p>') + '</div>'
       + (concept && ['PROBE_REQUIRED', 'ERROR_CLASSIFIED'].includes(session.state)
@@ -210,22 +224,11 @@
       + '<div class="row"><a class="btn primary" href="' + ui.link('map', { track: session.trackId }) + '">See the knowledge map</a><a class="btn" href="' + ui.link('explore') + '">Pick another problem</a></div></div>';
   }
 
-  function demoGuide(session) {
-    const labels = ['Submit the wrong attempt', 'Read the diagnosis, then answer the probe (fail it on purpose)', 'Recover: lesson, then practice', 'Solve the fresh verification problem', 'See mastery and the graph update', 'Retry the original problem and solve it'];
-    const st = session ? session.state : 'READY';
-    const verified = !!(session && session.result && session.result.verified);
-    const cur = { READY: verified ? 5 : 0, ATTEMPT_SUBMITTED: 0, ERROR_CLASSIFIED: 1, PROBE_REQUIRED: 1, RETRY_REQUIRED: verified ? 5 : 1, DIRECT_EXPLANATION: 0, REASONING_CHECK: 0, ESCALATED_TO_SOLUTION: 1, GAP_CONFIRMED: 2, RECOVERY_REQUIRED: 2, RECOVERY_IN_PROGRESS: 2, VERIFICATION_REQUIRED: 3, MASTERY_VERIFIED: 4, ATTEMPT_CORRECT: 6 }[st];
-    return '<aside class="card demo" aria-label="Judge demo guide"><div class="row between"><h3>Judge demo guide</h3><span class="badge gold">demo fixture</span></div>'
-      + '<p class="small muted">The wrong attempt is a pre-written fixture with only a final answer, which is thin evidence, so a probe comes first. "Fill in with working" adds the steps: strong evidence skips the probe. The diagnosis, mastery numbers and graph are computed live by the rule-based engine. Nothing in this demo is AI-generated.</p>'
-      + '<ol class="steps small">' + labels.map((l, i) => '<li' + (i === cur ? ' class="cur" aria-current="step"' : '') + (i < cur ? ' style="opacity:.55"' : '') + '>' + esc(l) + '</li>').join('') + '</ol>'
-      + '<div class="row"><button class="btn sm" type="button" data-action="demo-reset">Reset demo data</button></div></aside>';
-  }
-
-  ui.stage = function (session, store, note) {
+  ui.stage = function (session, store, note, opts) {
     const profile = store.profile();
     let body;
     if (!session || session.state === 'READY') {
-      body = '<div class="card stack" style="--gap-y:10px"><h3 id="stage-title" tabindex="-1">What happens after you submit</h3><ol class="steps muted"><li>Your answer is checked deterministically.</li><li>If it is wrong, the error is classified: slip, unit error, or a suspected gap, with evidence.</li><li>A suspected gap is tested with a short probe before anything is taught.</li><li>Confirmed gaps get a short lesson, practice, and a fresh verification problem.</li></ol></div>';
+      body = opts && opts.tour ? '' : '<div class="card stack" style="--gap-y:10px"><h3 id="stage-title" tabindex="-1">What happens after you submit</h3><ol class="steps muted"><li>Your answer is checked deterministically.</li><li>If it is wrong, the error is classified: slip, unit error, or a suspected gap, with evidence.</li><li>A suspected gap is tested with a short probe before anything is taught.</li><li>Confirmed gaps get a short lesson, practice, and a fresh verification problem.</li></ol></div>';
     } else if (session.state === 'ATTEMPT_CORRECT') body = solvedCard(session);
     else if (session.state === 'PROBE_REQUIRED') body = diagnosisCard(session) + probeCard(session);
     else if (session.state === 'RETRY_REQUIRED') body = (session.diagnosis ? diagnosisCard(session) : '') + slipCard(session);
@@ -238,7 +241,7 @@
     else if (session.state === 'VERIFICATION_REQUIRED') body = verificationCard(session);
     else if (session.state === 'MASTERY_VERIFIED') body = verifiedCard(session, store);
     else body = '<div class="card"><p>Working on it.</p></div>';
-    return '<div class="stack" style="--gap-y:14px" aria-live="polite">' + noteHtml(note) + body + (profile.demo ? demoGuide(session) : '') + '</div>';
+    return '<div class="stack" style="--gap-y:14px" aria-live="polite">' + noteHtml(note) + body + '</div>';
   };
 
   ui.noteHtml = noteHtml;

@@ -60,7 +60,7 @@
       + '<div class="hero-copy">'
       + '<p class="lead" data-reveal data-delay="0.35">When a student gets a problem wrong, MINDTRACE finds out why. It tells a slip from a missing prerequisite, asks one short question when the evidence is thin, teaches only what is missing, and checks that it stuck with a fresh problem.</p>'
       + '<div class="cta-row" data-reveal data-delay="0.5"><button class="btn primary lg" type="button" data-action="start-demo" data-magnet>Try the judge demo</button><a class="btn lg" href="#/" data-scroll="how" data-magnet>See how it works</a></div>'
-      + '<p class="hero-note" data-reveal data-delay="0.6">Runs in your browser. No account, and no API key for the demo.</p></div>'
+      + '<p class="hero-note" data-reveal data-delay="0.6">Runs in your browser. No account and no API key. The guided demo takes about three minutes.</p></div>'
       + '<figure class="hero-fig" data-reveal data-delay="0.3"><figcaption>One diagnosed transformer problem</figcaption>'
       + MT.GraphView.html(track, illustration(track), { compact: true, key: 'landing', selected: 'turns_ratio' })
       + '<figcaption>Illustration with hand-set values. The turns-ratio probe was missed, so the target problem is blocked until that concept is recovered and re-verified.</figcaption></figure></div></section>'

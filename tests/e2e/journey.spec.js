@@ -38,7 +38,7 @@ test('acceptance journey: wrong attempt to verified mastery, graph updates, pers
   await solveVerification(page);
 
   // 10. mastery updated, graph updated, original unlocked
-  await expect(page.getByText('Verified.', { exact: false }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Verified: the foundation is fixed' })).toBeVisible(); // the demo tour says it, so the duplicate note is hidden
   await expect(node(page, 'turns_ratio')).toHaveClass(/st-MASTERED/);
   await expect(node(page, 'ideal_tx')).not.toHaveClass(/st-BLOCKED/);
 

@@ -57,7 +57,9 @@
     }
     const draftKey = ctx.track.id + ':' + ctx.def.id;
     const mode = MT.flow.MODES.find((m) => m.id === ui.mode) || MT.flow.MODES[0];
-    const chips = '<div class="chips" role="group" aria-label="What would you like to do?">' + MT.flow.MODES.map((m) => '<button class="chip" type="button" data-action="set-mode" data-id="' + m.id + '" aria-pressed="' + (m.id === mode.id) + '" title="' + esc(m.hint) + '" data-fk="mode-' + m.id + '">' + esc(m.label) + '</button>').join('') + '</div><p class="hint">' + esc(mode.hint) + '</p>';
+    const chipRow = '<div class="chips" role="group" aria-label="What would you like to do?">' + MT.flow.MODES.map((m) => '<button class="chip" type="button" data-action="set-mode" data-id="' + m.id + '" aria-pressed="' + (m.id === mode.id) + '" title="' + esc(m.hint) + '" data-fk="mode-' + m.id + '">' + esc(m.label) + '</button>').join('') + '</div><p class="hint">' + esc(mode.hint) + '</p>';
+    // During the guided demo the seven modes are tucked away so the one next step stands out.
+    const chips = ctx.tour ? '<details class="modes-more"' + (mode.id !== 'SOLVE_WITH_ME' ? ' open' : '') + '><summary>Other ways to get help (hint, explain, teach from basics)</summary>' + chipRow + '</details>' : chipRow;
     if (mode.id === 'GIVE_HINT') {
       const shown = ui.hints[draftKey] || [];
       return '<section class="card stack" style="--gap-y:12px" aria-labelledby="att-h"><h2 id="att-h" class="h3">Your attempt</h2>' + chips + lockBanner
@@ -70,7 +72,7 @@
         + '<p class="muted">' + (mode.id === 'EXPLAIN_CONCEPT' ? 'You will get the explanation straight away, with an optional quick check. No questions first.' : 'You will be taken through every prerequisite in dependency order, ending at the idea this problem tests.') + '</p>'
         + '<div><button class="btn primary" type="button" data-action="start-explain" data-fk="start-explain">' + (mode.id === 'EXPLAIN_CONCEPT' ? 'Explain it' : 'Teach me from the basics') + '</button></div></section>';
     }
-    const demoBtn = store.profile().demo && !ctx.track.custom && !locked.length ? '<button class="btn sm" type="button" data-action="demo-fill" data-fk="demo-fill">Fill in the demo wrong attempt</button>' + (ctx.track.id === 'eee-transformers' && ctx.def.id === 'tx-secondary-current' ? '<button class="btn sm" type="button" data-action="demo-fill-working" data-fk="demo-fill-working">Fill in with working</button>' : '') : '';
+    const demoBtn = store.profile().demo && !ctx.tour && !ctx.track.custom && !locked.length ? '<button class="btn sm" type="button" data-action="demo-fill" data-fk="demo-fill">Fill in the demo wrong attempt</button>' + (ctx.track.id === 'eee-transformers' && ctx.def.id === 'tx-secondary-current' ? '<button class="btn sm" type="button" data-action="demo-fill-working" data-fk="demo-fill-working">Fill in with working</button>' : '') : '';
     return '<form class="card stack" data-form="attempt" novalidate style="--gap-y:14px"><h2 class="h3">Your attempt</h2>' + chips + lockBanner
       + ui.answerBox('a', problem, draftKey, ui.wsError)
       + '<div class="row"><button class="btn primary" type="submit" data-fk="attempt-submit"' + (locked.length || ui.busy ? ' aria-disabled="true" disabled' : '') + '>' + (ui.busy ? '<span class="spin" aria-hidden="true"></span>Reading your work' : 'Submit attempt') + '</button>' + demoBtn + '</div>'
@@ -84,13 +86,24 @@
     const store = ui.store;
     const note = ui.stageNote;
     const focusId = ctx.session && ctx.session.gap ? ctx.session.gap.conceptId : (ctx.session && ctx.session.diagnosis && ctx.session.diagnosis.candidates && ctx.session.diagnosis.candidates[ctx.session.probeIndex || 0] ? ctx.session.diagnosis.candidates[ctx.session.probeIndex || 0].id : ctx.track.target);
+    const tourOn = store.profile().demo && MT.tour.isTourProblem(ctx.track.id, ctx.def.id);
+    ctx.tour = tourOn;
+    let tourHtml = '';
+    ui.tourSel = null; ui.tourN = null;
+    if (tourOn) {
+      const dkey = ctx.track.id + ':' + ctx.def.id;
+      const info = MT.tour.step({ trackId: ctx.track.id, problemId: ctx.def.id, session: ctx.session, draftsFilled: !!ui.drafts['ans:' + dkey], conceptName: (id) => ui.conceptName(ctx.track.id, id), mapHref: ui.link('map', { track: ctx.track.id }), askHref: ui.link('ask') });
+      ui.tourN = info.n;
+      if (ui.tourOff) tourHtml = '<div class="tour-collapsed"><button class="btn sm" type="button" data-action="tour-off">Show the guided demo</button></div>';
+      else { ui.tourSel = info.focus; tourHtml = MT.tour.panelHtml(info); }
+    }
     return '<div class="page-head"><div><p class="eyebrow">Problem workspace</p><h1 id="page-title" class="h1">' + fmt(ctx.def.title) + '</h1></div><div class="row"><span class="badge gold">' + esc(ctx.track.exam) + '</span><span class="badge">' + esc(ctx.track.subject) + '</span><span class="badge">' + esc(ctx.def.difficulty) + '</span>' + (ctx.track.custom ? '<span class="badge sage" title="Subject adapter and mastery estimator">' + esc(MT.adapters.forSubject(ctx.track.subject, ctx.track.topic).name) + ' &middot; ' + (MT.adapters.estimatorFor(MT.adapters.forSubject(ctx.track.subject, ctx.track.topic), ctx.track.analysis ? ctx.track.analysis.question_type : '') === 'RUBRIC_BETA' ? 'rubric estimate' : 'BKT estimate') + '</span>' : '') + (ctx.track.analysis ? '<span class="badge" title="Question type as read by the map builder">' + esc(ctx.track.analysis.question_type.replace(/_/g, ' ').toLowerCase()) + '</span><span class="badge">' + esc(ctx.track.analysis.education_level) + '</span>' : '') + '</div></div>'
-      + '<div class="ws"><div class="stack" style="--gap-y:16px">' + selectors(ctx)
+      + '<div class="ws"><div class="ws-left stack" style="--gap-y:16px">' + selectors(ctx)
       + '<section class="card" aria-labelledby="prob-h"><p class="eyebrow" id="prob-h">Problem</p><p class="problem-text math">' + fmt(problem.statement) + '</p></section>'
       + attemptCard(ctx, problem) + '</div>'
-      + '<div class="stack" style="--gap-y:16px" id="stage">' + ui.stage(ctx.session, store, note)
+      + '<div class="ws-tour">' + tourHtml + '</div><div class="ws-stage stack" style="--gap-y:16px"><div class="stack" style="--gap-y:16px" id="stage">' + ui.stage(ctx.session, store, tourOn && !ui.tourOff && note && note.redundantInTour ? null : note, { tour: tourOn })
       + '<section class="card" aria-labelledby="mini-h"><div class="card-head"><h2 class="h3" id="mini-h">Where this sits in the graph</h2><a class="small" href="' + ui.link('map', { track: ctx.track.id, concept: focusId }) + '">Open full map</a></div>'
-      + MT.GraphView.html(ctx.track, store.graphState(ctx.track.id), { compact: true, key: 'ws-' + ctx.track.id, selected: focusId }) + '</section></div></div>';
+      + MT.GraphView.html(ctx.track, store.graphState(ctx.track.id), { compact: true, key: 'ws-' + ctx.track.id, selected: focusId }) + '</section></div></div></div>';
   }
 
   ui.registerPage({
@@ -98,6 +111,7 @@
     mount: (root) => {
       ui.stageNote = null;
       root.querySelectorAll('[data-gv-root]').forEach((el) => MT.GraphView.mount(el, { interactive: false }));
+      applyTourFocus(root);
     },
   });
 
@@ -113,7 +127,7 @@
     return { answer: p.answer.kind === 'expr' ? pat.expr : pat.value + (p.answer.unit ? ' ' + p.answer.unit : ''), working: '' };
   };
   const cname = (session, id) => ui.conceptName(session.trackId, id);
-  const note = (kind, html) => { ui.stageNote = { kind, html }; };
+  const note = (kind, html, redundantInTour) => { ui.stageNote = { kind, html, redundantInTour: !!redundantInTour }; };
 
   /* ---------- selector actions ---------- */
   ui.actions['ws-domain'] = (el) => { const t = MT.data.tracksFor(el.value)[0]; ui.go(wsLink(t.id, t.problems[0].id)); };
@@ -173,7 +187,7 @@
     if (!r.ok) { ui.toast(r.error, 'bad'); return; }
     const nm = esc(prior.concept.name);
     const nums = ' Estimate ' + ui.f2(r.entry.before) + ' to ' + ui.f2(r.entry.after) + '.';
-    if (r.outcome === 'GAP_CONFIRMED') note('warn', '<strong>Probe missed: gap confirmed in ' + nm + '.</strong><p class="small">' + nums + ' It is now below the 0.45 threshold.</p>');
+    if (r.outcome === 'GAP_CONFIRMED') note('warn', '<strong>Probe missed: gap confirmed in ' + nm + '.</strong><p class="small">' + nums + ' It is now below the 0.45 threshold.</p>', true);
     else if (r.outcome === 'NEXT_PROBE' && r.correct) note('good', '<strong>Probe passed: ' + nm + ' is probably not the cause.</strong><p class="small">' + nums + ' Checking the next hypothesis.</p>');
     else if (r.outcome === 'NEXT_PROBE') note('info', '<strong>Probe missed, but one miss is not enough to confirm a gap in ' + nm + '.</strong><p class="small">' + nums + ' Checking the next hypothesis.</p>');
     else note('info', '<strong>No prerequisite gap was confirmed.</strong><p class="small">' + nums + ' Nothing was lowered below the threshold. Re-read the problem and try again.</p>');
@@ -210,7 +224,7 @@
     if (!r.ok) { ui.vError = r.error; ui.focusAfter = '#v-ans'; ui.render(); return; }
     if (!choice) ui.drafts['ans:v:' + s.id + ':' + s.verification.seed] = '';
     const nm = esc(cname(s, s.gap.conceptId));
-    if (r.outcome === 'VERIFIED') note('good', '<strong>Verified.</strong><p class="small">Estimate ' + ui.f2(r.before) + ' to ' + ui.f2(r.after) + '.</p>');
+    if (r.outcome === 'VERIFIED') note('good', '<strong>Verified.</strong><p class="small">Estimate ' + ui.f2(r.before) + ' to ' + ui.f2(r.after) + '.</p>', true);
     else if (r.outcome === 'NEEDS_MORE') note('info', '<strong>Correct, but one success is not enough yet.</strong><p class="small">The estimate for ' + nm + ' is ' + ui.f2(r.after) + ', below 0.80. Here is another fresh problem.</p>');
     else if (r.outcome === 'SAME_GAP') note('bad', '<strong>The same gap showed up again.</strong><p class="small">' + r.diagnosis.evidence.map(fmt).join(' ') + ' Back to the lesson.</p>');
     else note('info', '<strong>That answer shows a different kind of error.</strong><p class="small">' + fmt(r.diagnosis.evidence[0] || '') + ' No penalty to ' + nm + '. Try this fresh problem.</p>');
@@ -272,6 +286,67 @@
     const res = MT.flow.submitReasoning(ui.store, s.id, reasoning, judgement);
     if (!res.ok) { ui.reasonError = res.error; ui.render(); return; }
     ui.focusAfter = '#stage-title'; ui.render();
+  };
+
+  /* ---------- guided demo ---------- */
+  /* Outline the one control to use next, and bring it into view when the step changes. */
+  function applyTourFocus(root) {
+    root.querySelectorAll('.tour-focus').forEach((e) => e.classList.remove('tour-focus'));
+    if (!ui.tourSel) return;
+    const el = root.querySelector(ui.tourSel);
+    if (!el) return;
+    el.classList.add('tour-focus');
+    if (ui.tourLast !== ui.tourN) {
+      ui.tourLast = ui.tourN;
+      const narrow = window.innerWidth <= 1000;
+      const tourEl = root.querySelector('.tour');
+      // On a phone the tour sits above everything else, so land on the instructions; on desktop, bring the control into view.
+      const target = narrow && tourEl ? tourEl : el;
+      const r = target.getBoundingClientRect();
+      if (narrow ? (r.top < 60 || r.top > 200) : (r.top < 90 || r.bottom > window.innerHeight - 40)) ui.scrollTo(Math.max(0, window.scrollY + r.top - (narrow ? 70 : window.innerHeight * 0.3)), false);
+    }
+  }
+  const tourHint = (text) => { const h = document.querySelector('.tour-hint'); if (h) h.textContent = text; };
+  const stageSession = () => context(ui.route).session;
+
+  ui.actions['tour-off'] = () => { ui.tourOff = !ui.tourOff; ui.tourLast = null; ui.render(); };
+  ui.actions['demo-pick-wrong'] = () => {
+    const pr = MT.flow.currentProbe(stageSession());
+    if (!pr) return;
+    const form = document.querySelector('form[data-form="probe"]');
+    const wrong = pr.mcq.options.filter((o) => o.index !== pr.concept.probe.correct);
+    const pick = wrong.find((o) => /1000/.test(o.text)) || wrong[0];
+    form.querySelector('input[value="' + pick.index + '"]').checked = true;
+    tourHint('Selected "' + pick.text + '". Now press Submit probe answer.');
+    form.querySelector('[data-fk="probe-submit"]').focus();
+  };
+  ui.actions['demo-pick-practice'] = () => {
+    const pr = MT.flow.currentPractice(stageSession());
+    if (!pr) return;
+    const form = document.querySelector('form[data-form="practice"]');
+    form.querySelector('input[value="' + pr.concept.practice.correct + '"]').checked = true;
+    tourHint('Right answer selected. Now press Check answer.');
+    form.querySelector('[data-fk="practice-submit"]').focus();
+  };
+  ui.actions['demo-fill-verify'] = () => {
+    const s = stageSession();
+    const vp = MT.flow.verificationProblem(s);
+    const input = document.querySelector('#v-ans');
+    input.value = vp.answer.display;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    tourHint('Answer filled in. Now press Submit for verification.');
+    document.querySelector('[data-fk="verify-submit"]').focus();
+  };
+  ui.actions['demo-fill-correct'] = () => {
+    const ctx = context(ui.route);
+    ui.drafts['ans:' + ctx.track.id + ':' + ctx.def.id] = MT.flow.originalProblem({ trackId: ctx.track.id, problemId: ctx.def.id }).answer.display;
+    ui.focusAfter = '[data-fk="attempt-submit"]'; ui.render();
+  };
+  ui.actions['demo-replay-working'] = () => {
+    ui.store.resetProgress(); ui.drafts = {}; ui.wsError = ''; ui.stageNote = null; ui.tourLast = null; ui.hints = {};
+    const k = MT.tour.TRACK + ':' + MT.tour.PROBLEM;
+    ui.drafts['ans:' + k] = '200 A'; ui.drafts['wrk:' + k] = 'N1/N2 = 10\nV2 = V1 x N1/N2 = 240 x 10 = 2400 V\nI2 = V2/RL = 2400/12 = 200 A';
+    ui.go(wsLink(MT.tour.TRACK, MT.tour.PROBLEM)); ui.render();
   };
 
   /* ---------- demo ---------- */

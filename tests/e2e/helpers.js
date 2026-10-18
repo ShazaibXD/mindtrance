@@ -48,6 +48,12 @@ async function solveVerification(page) {
   throw new Error('verification did not complete');
 }
 
+/* The seven learning modes are tucked into a collapsible section during the guided demo. */
+async function openModes(page) {
+  const summary = page.getByText('Other ways to get help');
+  if (await summary.count()) await summary.click();
+}
+
 const node = (page, id) => page.locator('.gv-node[data-id="' + id + '"]');
 
-module.exports = { startDemo, submitDemoAttempt, failProbe, recoverToVerification, solveVerification, node };
+module.exports = { openModes, startDemo, submitDemoAttempt, failProbe, recoverToVerification, solveVerification, node };

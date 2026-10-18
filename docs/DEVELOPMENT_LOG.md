@@ -61,6 +61,16 @@ The user attached a platform-sized specification. After asking, the chosen scope
 - **Nothing else found** by a randomized stress test of the flow engine (400 runs of 40 random steps checking state, estimate range and serialisability), a sweep of every route at three widths with and without motion, and rapid navigation, history and double-click checks.
 - **Two flaky tests made reliable:** the headless-Chrome smoke tests now retry when the machine is busy, and the graph-zoom test waits for the entrance animation to finish.
 
+## Demo pass: a self-explanatory guided tour
+
+The demo showed seven mode buttons, a generic explainer, a dense paragraph and scattered fill-in buttons, and never said what to do next or why. It now has a tour (`js/ui/demo.js`) that follows the session state.
+
+- **Pure step function.** `step()` maps session state to a step description with no DOM, so every state is unit-tested, and text uses the real numbers (evidence score, estimate before and after).
+- **Highlight, do not block.** The next control is outlined and scrolled into view, and shortcuts do the tedious clicks, but the visitor still presses the real buttons, so they learn the interface.
+- **Plain words in the product itself.** The diagnosis card gained an "In plain words" sentence for everyone, not only in the demo.
+- **Found by looking at it:** on a phone the tour came after the form, and the auto-scroll jumped past it; the tour and the page's own note said the same thing twice; and after the follow-up question confirmed the gap, the Diagnosis card still said "not enough evidence yet", contradicting the tour. All fixed.
+- **Heading clashes matter.** Tour titles had to avoid the headings the page already uses ("Gap confirmed", "Diagnosis", "Correct"), both for tests and for screen-reader users who navigate by heading.
+
 ## Not done
 
 Real auth, database, live Gemini verification of any of the three AI paths, KaTeX, cross-browser runs. See `docs/ROADMAP.md`.

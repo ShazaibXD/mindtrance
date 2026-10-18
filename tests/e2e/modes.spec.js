@@ -1,10 +1,11 @@
 const { test, expect } = require('@playwright/test');
-const { startDemo } = require('./helpers');
+const { startDemo, openModes } = require('./helpers');
 
 const events = (page) => page.evaluate(() => MT.ui.store.events().map((e) => e.type));
 
 test('hints come in three levels, show no answer and change no estimate', async ({ page }) => {
   await startDemo(page);
+  await openModes(page);
   await page.getByRole('button', { name: 'Give me a hint' }).click();
   for (const label of ['Show a hint', 'Another hint (2 of 3)', 'Another hint (3 of 3)']) await page.getByRole('button', { name: label }).click();
   await expect(page.getByTestId('hints').locator('li')).toHaveCount(3);
@@ -17,6 +18,7 @@ test('hints come in three levels, show no answer and change no estimate', async 
 
 test('explain mode gives the explanation first, with an optional check', async ({ page }) => {
   await startDemo(page);
+  await openModes(page);
   await page.getByRole('button', { name: 'Explain this concept' }).click();
   await page.getByRole('button', { name: 'Explain it' }).click();
   await expect(page.getByRole('heading', { name: 'The concept' })).toBeVisible();
@@ -36,6 +38,7 @@ test('explain mode gives the explanation first, with an optional check', async (
 
 test('teach from the basics walks the prerequisites in order', async ({ page }) => {
   await startDemo(page);
+  await openModes(page);
   await page.getByRole('button', { name: 'Teach me from the basics' }).click();
   await page.getByRole('button', { name: 'Teach me from the basics' }).last().click();
   await expect(page.getByRole('heading', { name: 'From the basics up' })).toBeVisible();

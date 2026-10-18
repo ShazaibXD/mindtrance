@@ -72,9 +72,9 @@ There are no required environment variables and no `.env` files. The optional Ge
 ## Running tests
 
 ```bash
-npm test               # 198 unit and smoke tests, no install needed
+npm test               # 205 unit and smoke tests, no install needed
 npm install            # once, for Playwright
-npm run test:e2e       # 59 browser tests driving the real UI
+npm run test:e2e       # 63 browser tests driving the real UI
 ```
 
 The unit suite covers the engine, content, state machine, store, flow, analytics, UI helpers, graph rendering and three headless-Chrome smoke tests (skipped when Chrome is not installed; set `CHROME_BIN` to point at a browser). The e2e suite clicks through the whole student journey. See `docs/TESTING.md`.
@@ -89,13 +89,16 @@ Your own questions are stored per profile and can be deleted from the same page.
 
 ## Demo mode
 
-1. Click **Judge demo** on the landing page. A profile named "Judge demo" is created.
-2. In the workspace, click **Fill in the demo wrong attempt** and submit. The answer is a pre-written fixture; the diagnosis is computed live.
-3. Read the diagnosis and evidence, then answer the probe wrongly (the option an inverted ratio gives).
-4. Start recovery, read the lesson, answer practice, then solve the fresh verification problem(s).
-5. Watch mastery and the graph update (**Gap map**), then retry the original problem.
+Click **Judge demo** on the landing page. A guided tour walks one student's wrong answer through the whole loop in about three minutes. The panel at the top right follows what is happening, so you never have to guess what to do:
 
-Use **Reset demo data** in the guide panel to start over.
+- It says in plain words what the system just did and **why it matters**, using the real numbers from your session.
+- The one control to use next is outlined, and the page scrolls to it.
+- "Do it for me" shortcuts cover the tedious bits (pick the wrong probe answer, the right practice answer, fill in the verification answer).
+- A nine-step progress bar shows where you are, and **Hide tour** puts it away at any time.
+
+The nine steps: meet the student, submit, why it asks a question first, the cause is confirmed, a short lesson, one practice question, a fresh problem, verified, retry the original. At the end, **Replay with the working shown** runs the strong-evidence path, where the student's own steps confirm the cause and no question is needed.
+
+The demo also hides the seven learning-mode buttons behind "Other ways to get help" so the next step stands out. The wrong attempt is a pre-written fixture; the diagnosis, numbers and graph are computed live, and nothing in the demo is AI-generated. **Restart the demo** from the tour or use "Reset demo data".
 
 ## Project layout
 

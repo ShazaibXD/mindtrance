@@ -1,8 +1,8 @@
 # Testing
 
 ```bash
-npm test             # unit and smoke tests: node --test tests/*.test.js (198 tests, no install)
-npm run test:e2e     # Playwright browser tests (59 tests)
+npm test             # unit and smoke tests: node --test tests/*.test.js (205 tests, no install)
+npm run test:e2e     # Playwright browser tests (63 tests)
 ```
 
 Unit tests need Node 20 or newer and nothing else. The e2e suite needs `npm install` once and uses the Google Chrome already on the machine (`channel: 'chrome'`), so no browser is downloaded. To use Playwright's own Chromium instead: `npx playwright install chromium` then `E2E_CHANNEL=chromium npm run test:e2e`. The suite starts its own dependency-free static server on port 4174.
@@ -24,6 +24,7 @@ Unit tests need Node 20 or newer and nothing else. The e2e suite needs `npm inst
 | `custom` | Spec validation (15 malformed variants rejected), control-character cleaning, track building, mocked Gemini generation and judging (key never in URL, rate limits, bad JSON, unknown concept ids), demo rubric, open-ended and choice answers, the full open-ended journey with a follow-up and concept-targeted fresh question, per-profile privacy and deletion |
 | `motion` (unit) | Count-up formatting, and that motion is never enabled outside a browser |
 | `safety`, `adapters` | Hidden-character and injection flagging, exact-substring evidence quotes, judgemental-wording rejection, bare-answer confidence cap, the full outcome enum, domain guidance in prompts, adapter selection, honest verifier availability, estimator choice |
+| `tour` (unit) | Each session state maps to one numbered step, text uses the session's real numbers, tour titles never clash with the page's own headings, the panel is escaped, off-path states get a restart |
 | `modes` | Learning modes, three-level hints without mastery change, explanation and teach-from-basics order, reasoning check for a right answer, spec example of flawed reasoning |
 | `analytics`, `ui-util`, `graphview` | Pure analytics, escaping and math formatting, graph markup, accessibility attributes |
 | `smoke` | Headless Chrome loads `index.html` from `file://`: landing, graph, six domains, route guard, not-found |
@@ -39,6 +40,7 @@ Unit tests need Node 20 or newer and nothing else. The e2e suite needs `npm inst
 | `ask` | No-key state and labelled fixture; the complete universal loop on the demo question through real clicks; vague answers give low-confidence follow-ups; with a key, using a **mocked Google endpoint**: map built from a typed question, answer judged, key only in a header, rate-limited and malformed generations rejected with nothing saved, a judgement naming an unknown concept rejected |
 | `modes` | Hints, explain and teach-from-basics, the reasoning check, dotted uncertain edges, clarification before any request is sent |
 | `motion` | Motion enabled: smooth scroll, split-text with a correct accessible label, Vanta canvas mounts and is released off screen, scroll reveals, theme switch re-colours the network, no WebGL fallback, the full diagnostic loop while pages animate, entrance animations leave nodes opaque and edges undashed, graph zoom not hijacked. Reduced motion: nothing animates and everything is visible. The rest of the suite runs with `reducedMotion: 'reduce'` so animations cannot cause flakiness |
+| `tour` | A first-time visitor finishes all nine steps using only the tour's own buttons and text, the tour can be hidden and shown, the working-shown path skips the question, the seven modes are tucked away during the demo but not on other problems, and a normal profile never sees the tour |
 | `mobile` | 375px width: no horizontal overflow on any page, navigation drawer, the loop works with touch |
 
 The generated verification answer is read from app state (`MT.flow.verificationProblem`), because a test cannot guess random numbers. Everything else is done through the UI.
