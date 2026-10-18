@@ -179,3 +179,40 @@ details > summary { cursor: pointer; }
 .modes-more > summary { cursor: pointer; color: var(--text-2); font-size: 14px; font-weight: 550; }
 .modes-more[open] > summary { margin-bottom: 10px; }
 .plain { background: var(--elev); border-left: 3px solid var(--sage); padding: 10px 12px; border-radius: var(--r-sm); font-size: 15px; }
+
+/* ---------- demo layout: caption, stepper and two labelled panes ---------- */
+.demo-page { display: grid; gap: 20px; }
+.demo-head { display: grid; gap: 4px; }
+.demo-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 6px; }
+.demo-steps li { display: grid; gap: 6px; justify-items: center; text-align: center; color: var(--text-3); }
+.demo-steps .dot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line-strong); font: 600 12px var(--font-mono); background: var(--surface); transition: background .3s, border-color .3s, color .3s; }
+.demo-steps .lab { font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+.demo-steps .done { color: var(--text-2); }
+.demo-steps .done .dot { background: var(--sage); border-color: var(--sage); color: var(--sage-ink); }
+.demo-steps .now { color: var(--text); }
+.demo-steps .now .dot { background: var(--gold); border-color: var(--gold); color: #17110a; }
+.demo-narration { padding: clamp(20px, 3vw, 32px); gap: 14px; }
+.demo-narration .tour-title { font-size: clamp(28px, 3.6vw, 44px); }
+.demo-narration .tour-body { font-size: clamp(16px, 1.4vw, 18px); max-width: 62ch; }
+.demo-narration .tour-why { font-size: 15px; max-width: 68ch; }
+.narr-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 44px); align-items: start; }
+.narr-main { display: grid; gap: 10px; align-content: start; }
+.narr-side { display: grid; gap: 14px; align-content: start; padding-left: clamp(16px, 2.4vw, 32px); border-left: 1px solid var(--line); }
+.demo-narration .tour-cta { justify-items: start; gap: 12px; }
+.demo-panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.pane { display: grid; gap: 14px; align-content: start; }
+.pane-head { display: flex; gap: 14px; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.pane-num { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--elev); border: 1px solid var(--line-strong); font: 700 14px var(--font-mono); color: var(--gold); }
+.pane-title { font-family: var(--font-display); font-size: 24px; font-weight: 600; letter-spacing: -0.015em; }
+.pane.system .pane-num { color: var(--sage); }
+.belief-list { display: grid; gap: 14px; }
+.belief-list li { display: grid; gap: 6px; padding-left: 12px; border-left: 2px solid transparent; }
+.belief-list li.moved { border-left-color: var(--gold); }
+.demo-page .gv { height: 360px; }
+@media (max-width: 1000px) {
+  .demo-panes { grid-template-columns: 1fr; }
+  .demo-steps .lab { display: none; }
+  .demo-steps .now .lab { display: block; position: absolute; }
+  .narr-grid { grid-template-columns: 1fr; }
+  .narr-side { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); padding-top: 14px; }
+}

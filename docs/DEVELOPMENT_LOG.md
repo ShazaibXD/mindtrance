@@ -71,6 +71,15 @@ The demo showed seven mode buttons, a generic explainer, a dense paragraph and s
 - **Found by looking at it:** on a phone the tour came after the form, and the auto-scroll jumped past it; the tour and the page's own note said the same thing twice; and after the follow-up question confirmed the gap, the Diagnosis card still said "not enough evidence yet", contradicting the tour. All fixed.
 - **Heading clashes matter.** Tour titles had to avoid the headings the page already uses ("Gap confirmed", "Diagnosis", "Correct"), both for tests and for screen-reader users who navigate by heading.
 
+## Demo pass 2: split-pane layout
+
+Feedback on the deployed tour was that it "still looks the same": a small panel beside the same page. The demo now has its own layout.
+
+- **Two panes.** "What the student sees" and "What MINDTRACE is working out" sit side by side (stacked on phones), so the cause and effect are on one screen. The right pane shows the diagnosis, a per-concept belief list (started at, now), the map and an event log.
+- **Labelled stepper and wide caption** replace the corner panel; the same pure `step()` function drives them.
+- **Placeholders:** the right pane says "Waiting for the student" before a submission and "The diagnosis is done" once the card has served its purpose, so it never contradicts the caption.
+- Non-demo workspace pages are unchanged. Checked at phone width with no horizontal overflow; 205 unit and 63 browser tests pass.
+
 ## Not done
 
 Real auth, database, live Gemini verification of any of the three AI paths, KaTeX, cross-browser runs. See `docs/ROADMAP.md`.

@@ -89,12 +89,12 @@ Your own questions are stored per profile and can be deleted from the same page.
 
 ## Demo mode
 
-Click **Judge demo** on the landing page. A guided tour walks one student's wrong answer through the whole loop in about three minutes. The panel at the top right follows what is happening, so you never have to guess what to do:
+Click **Judge demo** on the landing page. A guided tour walks one student's wrong answer through the whole loop in about three minutes. The page is split in two: **What the student sees** (the problem, the form, the questions) on the left, and **What MINDTRACE is working out** (the diagnosis, its belief about each concept, the map, and a running log) on the right. A caption above both follows what is happening, so you never have to guess what to do:
 
 - It says in plain words what the system just did and **why it matters**, using the real numbers from your session.
 - The one control to use next is outlined, and the page scrolls to it.
 - "Do it for me" shortcuts cover the tedious bits (pick the wrong probe answer, the right practice answer, fill in the verification answer).
-- A nine-step progress bar shows where you are, and **Hide tour** puts it away at any time.
+- A nine-step labelled progress bar shows where you are, and **Hide tour** puts it away at any time.
 
 The nine steps: meet the student, submit, why it asks a question first, the cause is confirmed, a short lesson, one practice question, a fresh problem, verified, retry the original. At the end, **Replay with the working shown** runs the strong-evidence path, where the student's own steps confirm the cause and no question is needed.
 

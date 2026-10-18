@@ -62,10 +62,10 @@
       const last = s.probes && s.probes[s.probes.length - 1];
       const fromWorking = s.gap.confirmedBy === 'evidence';
       return {
-        n: 4, title: 'The cause is confirmed: ' + c,
+        n: 4, title: 'The cause is confirmed',
         body: fromWorking
-          ? 'The student\'s own working showed the mistake (evidence score ' + pct(d.evidenceScore) + '%, above the 75% line), so no extra question was needed. The mastery estimate for ' + c + ' is now ' + f2(s.gap.p) + '.'
-          : 'The question was missed. The mastery estimate for ' + c + ' fell from ' + f2(last ? last.before : 0.55) + ' to ' + f2(s.gap.p) + ', below the 0.45 line, so it is now a confirmed gap, not a guess.',
+          ? 'The student\'s own working showed the mistake (evidence score ' + pct(d.evidenceScore) + '%, above the 75% line), so no extra question was needed. The gap is in ' + c + ', and its mastery estimate is now ' + f2(s.gap.p) + '.'
+          : 'The question was missed, so the gap is in ' + c + '. Its mastery estimate fell from ' + f2(last ? last.before : 0.55) + ' to ' + f2(s.gap.p) + ', below the 0.45 line, so it is now a confirmed gap, not a guess.',
         why: 'The original problem is now locked, and the map marks it as blocked. Retrying it before fixing the foundation would only repeat the error.',
         cta: [{ label: 'See what the map shows', href: ctx.mapHref }],
         focus: '[data-fk="start-recovery"]',
@@ -105,21 +105,58 @@
     return { n: null, title: 'You are off the main path, which is fine', body: 'This is a side route of the same engine. Explore it, or restart the guided demo from the beginning at any time.', cta: [{ label: 'Restart the demo', action: 'demo-reset' }], focus: null };
   }
 
-  function panelHtml(info) {
+  const LABELS = ['Meet', 'Submit', 'Question', 'Confirm', 'Lesson', 'Practice', 'Fresh problem', 'Verified', 'Retry'];
+
+  function stepperHtml(info) {
     const { esc } = ui;
-    const dots = info.n ? '<div class="tour-dots" aria-hidden="true">' + Array.from({ length: TOTAL }, (_, i) => '<span class="' + (i + 1 < info.n ? 'done' : i + 1 === info.n ? 'now' : '') + '"></span>').join('') + '</div>' : '';
+    return '<ol class="demo-steps" aria-label="Demo progress">' + LABELS.map((l, i) => {
+      const n = i + 1;
+      const cls = !info.n ? '' : n < info.n ? 'done' : n === info.n ? 'now' : '';
+      return '<li class="' + cls + '"' + (cls === 'now' ? ' aria-current="step"' : '') + '><span class="dot">' + (cls === 'done' ? '&#10003;' : n) + '</span><span class="lab">' + esc(l) + '</span></li>';
+    }).join('') + '</ol>';
+  }
+
+  /* What MINDTRACE currently believes: only concepts with evidence, with where each started. */
+  function beliefsHtml(store, track) {
+    const { esc } = ui;
+    const gs = store.graphState(track.id);
+    const rows = track.concepts.filter((c) => store.record(track.id, c.id).obs > 0 || c.id === track.target);
+    const quiet = track.concepts.length - rows.length;
+    return '<section class="card beliefs" aria-labelledby="bl-h"><div class="card-head"><h3 id="bl-h" class="h3">What it believes about each concept</h3></div>'
+      + (rows.length ? '<ul class="list-reset belief-list">' + rows.map((c) => {
+        const st = gs[c.id];
+        const rec = store.record(track.id, c.id);
+        const moved = rec.obs > 0 && Math.abs(st.p - c.prior) > 0.02;
+        return '<li class="' + (moved ? 'moved' : '') + '"><div class="row between"><span>' + esc(c.name) + '</span>' + ui.badge(ui.STATUS[st.status].cls, ui.STATUS[st.status].short) + '</div>' + ui.meter(st.p, ui.STATUS[st.status].cls)
+          + '<div class="faint small">' + (rec.obs > 0 ? 'started at ' + f2(c.prior) + ', now <strong>' + f2(st.p) + '</strong>' : 'no answers yet, ' + f2(st.p) + ' is only a starting assumption') + '</div></li>';
+      }).join('') + '</ul>' : '<p class="muted">Nothing yet.</p>')
+      + (quiet > 0 ? '<p class="faint small">' + quiet + ' other concept' + (quiet > 1 ? 's' : '') + ' not assessed yet.</p>' : '') + '</section>';
+  }
+
+  /* A plain-words log of what has happened in this session, newest first. */
+  function logHtml(store, session) {
+    const { esc } = ui;
+    const evs = session ? store.events().filter((e) => e.sessionId === session.id).slice(-6).reverse() : [];
+    return '<section class="card" aria-labelledby="lg-h"><div class="card-head"><h3 id="lg-h" class="h3">What just happened</h3></div>'
+      + (evs.length ? '<ul class="list small">' + evs.map((e) => '<li><span>' + esc(ui.describeEvent(e).text) + '</span><span class="faint">' + ui.ago(e.at) + '</span></li>').join('') + '</ul>' : '<p class="muted">Nothing yet. This fills in as the student acts.</p>') + '</section>';
+  }
+
+  function panelHtml(info, variant) {
+    const { esc } = ui;
+    const dots = info.n && variant !== 'narration' ? '<div class="tour-dots" aria-hidden="true">' + Array.from({ length: TOTAL }, (_, i) => '<span class="' + (i + 1 < info.n ? 'done' : i + 1 === info.n ? 'now' : '') + '"></span>').join('') + '</div>' : '';
     const cta = (info.cta || []).map((c) => c.href
       ? '<a class="btn" href="' + esc(c.href) + '">' + esc(c.label) + '</a>'
       : '<span class="tour-act"><button class="btn ' + (c.primary ? 'primary' : '') + '" type="button" data-action="' + esc(c.action) + '" data-fk="tour-' + esc(c.action) + '">' + esc(c.label) + '</button>' + (c.note ? '<span class="faint small">' + esc(c.note) + '</span>' : '') + '</span>').join('');
-    return '<aside class="tour card" aria-label="Guided demo">'
-      + '<div class="tour-top"><span class="badge gold">Guided demo</span>' + (info.n ? '<span class="tour-count">Step ' + info.n + ' of ' + TOTAL + '</span>' : '') + '<button class="linkbtn small tour-hide" type="button" data-action="tour-off">Hide tour</button></div>' + dots
-      + '<h2 class="tour-title">' + esc(info.title) + '</h2><p class="tour-body">' + esc(info.body) + '</p>'
-      + (info.list ? '<ul class="tour-list">' + info.list.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '')
-      + (info.why ? '<p class="tour-why"><strong>Why it matters.</strong> ' + esc(info.why) + '</p>' : '')
-      + (cta ? '<div class="tour-cta">' + cta + '</div>' : '') + '<p class="tour-hint small" role="status"></p></aside>';
+    const head = '<div class="tour-top"><span class="badge gold">Guided demo</span>' + (info.n ? '<span class="tour-count">Step ' + info.n + ' of ' + TOTAL + '</span>' : '') + '<button class="linkbtn small tour-hide" type="button" data-action="tour-off">Hide tour</button></div>';
+    const main = '<h2 class="tour-title">' + esc(info.title) + '</h2><p class="tour-body">' + esc(info.body) + '</p>'
+      + (info.list ? '<ul class="tour-list">' + info.list.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '');
+    const side = (info.why ? '<p class="tour-why"><strong>Why it matters.</strong> ' + esc(info.why) + '</p>' : '')
+      + (cta ? '<div class="tour-cta">' + cta + '</div>' : '') + '<p class="tour-hint small" role="status"></p>';
+    if (variant === 'narration') return '<aside class="tour card demo-narration" aria-label="Guided demo">' + head + '<div class="narr-grid"><div class="narr-main">' + main + '</div><div class="narr-side">' + side + '</div></div></aside>';
+    return '<aside class="tour card" aria-label="Guided demo">' + head + dots + main + side + '</aside>';
   }
 
-  MT.tour = { TOTAL, TRACK, PROBLEM, isTourProblem, step, panelHtml };
+  MT.tour = { TOTAL, TRACK, PROBLEM, LABELS, isTourProblem, step, panelHtml, stepperHtml, beliefsHtml, logHtml };
   ui.tour = MT.tour;
   if (typeof module !== 'undefined' && module.exports) module.exports = MT.tour;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -244,6 +244,28 @@
     return '<div class="stack" style="--gap-y:14px" aria-live="polite">' + noteHtml(note) + body + '</div>';
   };
 
+  /* The same cards as ui.stage, split by who they belong to: what the student sees versus what the system is working out.
+   * Used by the guided demo so the two are never mixed. */
+  ui.stageParts = function (session, store, note) {
+    const st = session ? session.state : 'READY';
+    const diag = session && session.diagnosis ? diagnosisCard(session) : '';
+    let student = '';
+    let system = '';
+    if (!session || st === 'READY') student = '';
+    else if (st === 'ATTEMPT_CORRECT') student = solvedCard(session);
+    else if (st === 'PROBE_REQUIRED') { system = diag; student = probeCard(session); }
+    else if (st === 'RETRY_REQUIRED') { system = diag; student = slipCard(session); }
+    else if (st === 'GAP_CONFIRMED') { system = diag; student = gapCard(session); }
+    else if (st === 'ESCALATED_TO_SOLUTION') student = escalationCard(session);
+    else if (st === 'DIRECT_EXPLANATION') student = explanationCard(session, store);
+    else if (st === 'REASONING_CHECK') student = reasoningCard(session);
+    else if (st === 'RECOVERY_REQUIRED') student = '<div class="card stack" style="--gap-y:12px"><h3 id="stage-title" tabindex="-1">The gap is still open</h3><p class="muted">Review the lesson again, then try another fresh problem.</p><div><button class="btn primary" type="button" data-action="start-recovery" data-fk="start-recovery">Return to the lesson</button></div></div>';
+    else if (st === 'RECOVERY_IN_PROGRESS') student = recoveryCard(session, store);
+    else if (st === 'VERIFICATION_REQUIRED') student = verificationCard(session);
+    else if (st === 'MASTERY_VERIFIED') student = verifiedCard(session, store);
+    return { student: '<div class="stack" style="--gap-y:14px" aria-live="polite">' + noteHtml(note) + student + '</div>', system };
+  };
+
   ui.noteHtml = noteHtml;
   ui.answerBox = answerBox;
   if (typeof module !== 'undefined' && module.exports) module.exports = ui.stage;

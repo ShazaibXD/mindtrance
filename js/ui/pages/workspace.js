@@ -97,6 +97,25 @@
       if (ui.tourOff) tourHtml = '<div class="tour-collapsed"><button class="btn sm" type="button" data-action="tour-off">Show the guided demo</button></div>';
       else { ui.tourSel = info.focus; tourHtml = MT.tour.panelHtml(info); }
     }
+    if (tourOn && !ui.tourOff) {
+      const info2 = MT.tour.step({ trackId: ctx.track.id, problemId: ctx.def.id, session: ctx.session, draftsFilled: !!ui.drafts['ans:' + ctx.track.id + ':' + ctx.def.id], conceptName: (id) => ui.conceptName(ctx.track.id, id), mapHref: ui.link('map', { track: ctx.track.id }), askHref: ui.link('ask') });
+      const parts = ui.stageParts(ctx.session, store, note && note.redundantInTour ? null : note);
+      const diagShown = !!parts.system;
+      const system = (diagShown ? parts.system : (ctx.session && ctx.session.attempt
+        ? '<section class="card"><h3 class="h3">The diagnosis is done</h3><p class="muted">The cause was found, so now it is about teaching that one concept and checking it stuck. Follow the estimates and the log below.</p></section>'
+        : '<section class="card"><h3 class="h3">Waiting for the student</h3><p class="muted">Once an answer arrives, MINDTRACE scores the evidence here and says what it suspects and why.</p></section>'))
+        + MT.tour.beliefsHtml(store, ctx.track)
+        + '<section class="card" aria-labelledby="mini-h"><div class="card-head"><h3 class="h3" id="mini-h">The map</h3><a class="small" href="' + ui.link('map', { track: ctx.track.id, concept: focusId }) + '">Open full map</a></div>'
+        + MT.GraphView.html(ctx.track, store.graphState(ctx.track.id), { compact: true, key: 'ws-' + ctx.track.id, selected: focusId }) + '</section>'
+        + MT.tour.logHtml(store, ctx.session);
+      return '<div class="demo-page"><div class="demo-head"><p class="eyebrow">Guided demo</p><h1 id="page-title" class="h1">' + fmt(ctx.def.title) + '</h1></div>'
+        + MT.tour.stepperHtml(info2) + MT.tour.panelHtml(info2, 'narration')
+        + '<div class="demo-panes" id="stage">'
+        + '<section class="pane" aria-labelledby="pane-s"><header class="pane-head"><span class="pane-num" aria-hidden="true">1</span><div><h2 id="pane-s" class="pane-title">What the student sees</h2><p class="muted small">Their screen: the problem, their answer, and the questions and lessons they get.</p></div></header>'
+        + '<section class="card" aria-labelledby="prob-h"><p class="eyebrow" id="prob-h">Problem</p><p class="problem-text math">' + fmt(problem.statement) + '</p></section>'
+        + attemptCard(ctx, problem) + parts.student + '</section>'
+        + '<section class="pane system" aria-labelledby="pane-m"><header class="pane-head"><span class="pane-num" aria-hidden="true">2</span><div><h2 id="pane-m" class="pane-title">What MINDTRACE is working out</h2><p class="muted small">Normally invisible: the evidence, its beliefs about each concept, and the map.</p></div></header>' + system + '</section></div></div>';
+    }
     return '<div class="page-head"><div><p class="eyebrow">Problem workspace</p><h1 id="page-title" class="h1">' + fmt(ctx.def.title) + '</h1></div><div class="row"><span class="badge gold">' + esc(ctx.track.exam) + '</span><span class="badge">' + esc(ctx.track.subject) + '</span><span class="badge">' + esc(ctx.def.difficulty) + '</span>' + (ctx.track.custom ? '<span class="badge sage" title="Subject adapter and mastery estimator">' + esc(MT.adapters.forSubject(ctx.track.subject, ctx.track.topic).name) + ' &middot; ' + (MT.adapters.estimatorFor(MT.adapters.forSubject(ctx.track.subject, ctx.track.topic), ctx.track.analysis ? ctx.track.analysis.question_type : '') === 'RUBRIC_BETA' ? 'rubric estimate' : 'BKT estimate') + '</span>' : '') + (ctx.track.analysis ? '<span class="badge" title="Question type as read by the map builder">' + esc(ctx.track.analysis.question_type.replace(/_/g, ' ').toLowerCase()) + '</span><span class="badge">' + esc(ctx.track.analysis.education_level) + '</span>' : '') + '</div></div>'
       + '<div class="ws"><div class="ws-left stack" style="--gap-y:16px">' + selectors(ctx)
       + '<section class="card" aria-labelledby="prob-h"><p class="eyebrow" id="prob-h">Problem</p><p class="problem-text math">' + fmt(problem.statement) + '</p></section>'

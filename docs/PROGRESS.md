@@ -32,7 +32,7 @@ Status labels: **Verified** = exercised end to end in a browser, **Tested** = au
 | Opens from `file://` | Verified in headless Chrome (smoke test) |
 | Optional Gemini classification | Tested with mocks only. **Not verified against the live API.** |
 | Ask anything: map from any question, open-ended answer judging, follow-up question, concept-targeted fresh question | Tested (unit and e2e) with mocked Gemini; the keyless demo fixture is Verified end-to-end. **Live Gemini output quality is unverified** |
-| Judge demo mode: nine-step guided tour with plain-words explanations, highlighted next control and shortcuts | Tested (unit and e2e, including a full run by a first-time-visitor script) and reviewed visually on desktop and phone |
+| Judge demo mode: split-pane layout (student view and system view), labelled nine-step tour, plain-words captions, belief list, event log, highlighted next control and shortcuts | Tested (unit and e2e, including a full run by a first-time-visitor script) and reviewed visually on desktop and phone |
 | Visual redesign and motion (Lenis, GSAP, Vanta) | Verified visually in Chrome (dark, light, phone) and by 7 browser tests; screenshots reviewed by hand |
 | Spec outcome taxonomy, composite evidence score, two-probe ceiling, escalation, recovery cap | Tested and verified end-to-end in Chrome |
 | Learning modes, hints, explanations, reasoning check, clarification | Tested and verified end-to-end in Chrome |

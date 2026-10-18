@@ -143,7 +143,7 @@ test('two probes that find nothing lead to a worked solution, never a third prob
     await page.getByRole('button', { name: 'Submit probe answer' }).click();
   }
   await expect(page.getByRole('heading', { name: /step back/ })).toBeVisible();
-  await expect(page.getByText('Worked solution')).toBeVisible();
+  await expect(page.getByText('Worked solution', { exact: true })).toBeVisible();
   await expect(page.getByText('Marked for review')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Submit probe answer' })).toHaveCount(0);
 });
