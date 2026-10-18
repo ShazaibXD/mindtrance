@@ -30,7 +30,7 @@
     const list = profiles.length
       ? '<ul class="list-reset profiles">' + profiles.map((p) => '<li><button class="profile-btn" type="button" data-action="pick-profile" data-id="' + esc(p.id) + '" data-fk="pf-' + esc(p.id) + '"><span class="avatar" aria-hidden="true">' + esc(p.name.slice(0, 1).toUpperCase()) + '</span><span><strong>' + esc(p.name) + '</strong>' + (p.demo ? ' <span class="badge gold">demo</span>' : '') + '<br><span class="faint small">Created ' + ui.ago(p.createdAt) + '</span></span>' + ui.icon('arrow', 16) + '</button></li>').join('') + '</ul>'
       : '<div class="empty"><p>No profiles in this browser yet.</p></div>';
-    return '<main id="main" class="auth"><div class="auth-card card">'
+    return '<main id="main" class="auth"><div class="auth-bg" data-vanta aria-hidden="true"></div><div class="auth-card card">'
       + '<a class="brand" href="#/"><span class="brand-mark" aria-hidden="true"></span>MINDTRACE</a>'
       + '<h1 id="page-title" class="h2">' + (active === 'signin' ? 'Sign in' : 'Create a profile') + '</h1>'
       + '<div class="tabs" role="tablist" aria-label="Account"><button class="tab" role="tab" type="button" aria-selected="' + (active === 'signin') + '" data-action="auth-tab" data-tab="signin">Sign in</button><button class="tab" role="tab" type="button" aria-selected="' + (active === 'create') + '" data-action="auth-tab" data-tab="create">Create profile</button></div>'

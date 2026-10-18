@@ -1,4 +1,4 @@
-/* Public landing page. Everything shown here describes what the prototype actually does. */
+/* Public landing page. Every number and claim here is computed from, or describes, what the prototype actually does. */
 (function (g) {
   'use strict';
   const MT = (g.MT = g.MT || {});
@@ -13,72 +13,97 @@
     return out;
   }
 
+  /* The two evidence scores in the explainer come from the real engine, not from invented numbers. */
+  function evidenceExamples() {
+    const track = MT.data.track('eee-transformers');
+    const problem = MT.data.instantiate(track.problems[0], 1);
+    const bare = MT.diagnose.diagnose(track, problem, '200 A', '', {});
+    const shown = MT.diagnose.diagnose(track, problem, '200 A', 'V2 = V1 x N1/N2 = 240 x 10 = 2400 V', {});
+    return { bare: bare.evidenceScore, shown: shown.evidenceScore };
+  }
+
   function render() {
     const signedIn = !!ui.store.profile();
     const track = MT.data.track('eee-transformers');
-    const domains = MT.data.domains.filter((d) => !d.dynamic).map((d) => {
+    const builtIn = MT.data.tracks.filter((t) => !t.custom);
+    const domains = MT.data.domains.filter((d) => !d.dynamic);
+    const ev = evidenceExamples();
+    const sum = (f) => builtIn.reduce((n, t) => n + f(t), 0);
+    const facts = [[builtIn.length, 'knowledge tracks'], [sum((t) => t.concepts.length), 'concepts in the graphs'], [sum((t) => t.problems.length), 'original problems'], [sum((t) => t.verification.length), 'fresh-question generators']]
+      .map(([n, t]) => '<div class="fact"><span class="n" data-count="' + n + '">' + n + '</span><span class="t">' + t + '</span></div>').join('');
+    const marquee = domains.map((d) => '<span class="marquee-item">' + esc(d.name) + '<small>' + esc(d.exam) + '</small></span>').join('');
+    const domainCards = domains.map((d) => {
       const ts = MT.data.tracksFor(d.id);
-      return '<li class="domain"><div class="row between"><h3>' + esc(d.name) + '</h3><span class="badge">' + esc(d.exam) + '</span></div><p class="muted">' + esc(d.blurb) + '</p>'
-        + (ts.length ? '<p class="faint small">Included: ' + ts.map((t) => esc(t.topic)).join(', ') + '</p>' : '<p class="faint small">Track pending</p>') + '</li>';
+      return '<li class="domain"><div class="row between"><h3>' + esc(d.name) + '</h3><span class="badge">' + esc(d.exam) + '</span></div><p class="muted">' + esc(d.blurb) + '</p><p class="faint small">' + (ts.length ? 'Included: ' + ts.map((t) => esc(t.topic)).join(', ') : 'Track pending') + '</p></li>';
     }).join('');
+    const modes = MT.flow.MODES.map((m) => '<div class="mode"><strong>' + esc(m.label) + '</strong><span>' + esc(m.hint) + '</span></div>').join('');
+    const steps = [
+      ['Attempt', 'Type the final answer and, if you can, your working. Numbers, units and algebra are checked by a deterministic parser. A model never decides whether a number is right.'],
+      ['Classify', 'Known wrong-answer patterns, power-of-ten and sign slips, and the steps in your working point to one of eleven outcomes, with the evidence quoted back to you.'],
+      ['Trace', 'Candidate causes are ranked through the prerequisite graph by dependency strength and by what you have already shown, not by whichever concept happens to be nearest.'],
+      ['Ask only if needed', 'If the evidence is thin, one short question separates the likely causes. If your working already shows the error, no question is asked. Never more than two.'],
+      ['Recover', 'A short lesson that names the misconception, one worked example and a practice question. Learning is credited once, after the lesson.'],
+      ['Verify', 'A fresh problem with new numbers tests transfer. Pass it and the original problem unlocks, the graph updates, and a spaced review is booked.'],
+    ].map(([t, p], i, all) => '<div class="tl-step' + (i === all.length - 1 ? ' tl-last' : '') + '"><span class="tl-num">' + String(i + 1).padStart(2, '0') + '</span><h3>' + t + '</h3><p>' + p + '</p></div>').join('');
 
-    return '<header class="topnav"><div class="container row between">'
+    return '<div class="landing">'
+      + '<header class="topnav"><div class="container row between">'
       + '<a class="brand" href="#/" aria-label="MINDTRACE home"><span class="brand-mark" aria-hidden="true"></span>MINDTRACE</a>'
-      + '<nav class="row" aria-label="Main"><a class="navlink hide-sm" href="#/" data-scroll="how">How it works</a><a class="navlink hide-sm" href="#/" data-scroll="domains">Domains</a><a class="navlink hide-sm" href="#/" data-scroll="honest">What is real</a>'
+      + '<nav class="row" aria-label="Main"><a class="navlink hide-sm" href="#/" data-scroll="how">How it works</a><a class="navlink hide-sm" href="#/" data-scroll="evidence">Evidence</a><a class="navlink hide-sm" href="#/" data-scroll="domains">Domains</a><a class="navlink hide-sm" href="#/" data-scroll="honest">What is real</a>'
       + '<button class="btn ghost sm" type="button" data-action="toggle-theme" aria-label="Toggle light or dark theme">' + ui.icon('sun', 16) + '</button>'
-      + (signedIn ? '<a class="btn primary sm" href="#/app/dashboard">Open app</a>' : '<a class="btn sm" href="#/signin">Sign in</a><button class="btn primary sm" type="button" data-action="start-demo">Judge demo</button>')
+      + (signedIn ? '<a class="btn primary sm" href="#/app/dashboard">Open app</a>' : '<a class="btn sm hide-sm" href="#/signin">Sign in</a><button class="btn primary sm" type="button" data-action="start-demo">Judge demo</button>')
       + '</nav></div></header>'
       + '<main id="main">'
-      + '<section class="hero container"><div class="hero-copy">'
-      + '<p class="eyebrow">AI-assisted learning diagnostics</p>'
-      + '<h1 id="page-title" class="display">Find the gap.<br>Fix the foundation.</h1>'
-      + '<p class="lead">When a student gets a problem wrong, MINDTRACE asks why. It separates a slip from a missing prerequisite, tests the suspected cause with a short probe, and only then teaches the concept that is actually missing.</p>'
-      + '<div class="row"><button class="btn primary lg" type="button" data-action="start-demo">Try the judge demo</button><a class="btn lg" href="#/" data-scroll="how">See how it works</a></div>'
-      + '<p class="faint small">Runs entirely in your browser. No account, no server, no API key needed.</p></div>'
-      + '<figure class="hero-fig"><figcaption class="eyebrow">Example: a transformer numerical that went wrong</figcaption>'
-      + MT.GraphView.html(track, illustration(track), { compact: true, key: 'landing', selected: 'turns_ratio' })
-      + '<p class="faint small">Illustration with hand-set values. The student fails a probe on turns ratio, so the target problem is blocked until that concept is recovered and re-verified.</p></figure></section>'
 
-      + '<section class="section container" aria-labelledby="h-slip"><h2 id="h-slip" class="h2">A wrong answer does not always mean a gap in the concept</h2>'
-      + '<div class="cols3">'
-      + '<article class="card"><span class="badge verify">Slip</span><h3>The method is right</h3><p class="muted">The setup is sound and a late arithmetic or copying step failed. MINDTRACE asks for a retry and does not lower mastery.</p></article>'
-      + '<article class="card"><span class="badge verify">Unit error</span><h3>A prefix was missed</h3><p class="muted">The answer is off by a power of ten on a problem with units. One is a slip; a repeat triggers a probe on unit conversion.</p></article>'
-      + '<article class="card"><span class="badge gap">Prerequisite gap</span><h3>The cause is upstream</h3><p class="muted">The error pattern points to a concept the problem depends on. A probe confirms or rejects it before anything is taught.</p></article>'
+      + '<section class="hero"><div class="hero-bg" data-vanta aria-hidden="true"></div><div class="hero-grid">'
+      + '<h1 id="page-title" class="display hero-title" data-split>Find the gap.<br>Fix the foundation.</h1>'
+      + '<div class="hero-copy">'
+      + '<p class="lead" data-reveal data-delay="0.35">When a student gets a problem wrong, MINDTRACE finds out why. It tells a slip from a missing prerequisite, asks one short question when the evidence is thin, teaches only what is missing, and checks that it stuck with a fresh problem.</p>'
+      + '<div class="cta-row" data-reveal data-delay="0.5"><button class="btn primary lg" type="button" data-action="start-demo" data-magnet>Try the judge demo</button><a class="btn lg" href="#/" data-scroll="how" data-magnet>See how it works</a></div>'
+      + '<p class="hero-note" data-reveal data-delay="0.6">Runs in your browser. No account, and no API key for the demo.</p></div>'
+      + '<figure class="hero-fig" data-reveal data-delay="0.3"><figcaption>One diagnosed transformer problem</figcaption>'
+      + MT.GraphView.html(track, illustration(track), { compact: true, key: 'landing', selected: 'turns_ratio' })
+      + '<figcaption>Illustration with hand-set values. The turns-ratio probe was missed, so the target problem is blocked until that concept is recovered and re-verified.</figcaption></figure></div></section>'
+
+      + '<div class="marquee" data-marquee aria-label="Examination domains"><div class="marquee-track">' + marquee + '</div></div>'
+
+      + '<section class="section container" aria-labelledby="h-slip"><div class="section-head"><h2 id="h-slip" class="section-title" data-split>A wrong answer does not always mean a gap in the concept</h2></div>'
+      + '<div class="cols3" data-stagger>'
+      + '<article class="card"><span class="badge verify">Slip</span><h3>The method is right</h3><p class="muted">The setup is sound and a late arithmetic or copying step went wrong. MINDTRACE asks for another try and does not lower mastery.</p></article>'
+      + '<article class="card"><span class="badge verify">Unit or reading slip</span><h3>A prefix or a phrase</h3><p class="muted">The answer is off by a power of ten, or answers a slightly different question. One is a slip. A repeat triggers a quick check on unit conversion.</p></article>'
+      + '<article class="card"><span class="badge gap">Prerequisite gap</span><h3>The cause is upstream</h3><p class="muted">The error pattern points at a concept the problem depends on. It is confirmed by evidence before anything is taught.</p></article>'
       + '</div></section>'
 
-      + '<section id="how" class="section container" aria-labelledby="h-how"><h2 id="h-how" class="h2">How a diagnosis works</h2>'
-      + '<ol class="flow">'
-      + '<li><h3>Attempt</h3><p class="muted">Submit the final answer and your working. The answer is checked by deterministic parsing, never by a language model.</p></li>'
-      + '<li><h3>Classify</h3><p class="muted">Known error signatures, power-of-ten and sign slips, and keywords in your working give a category with the evidence shown.</p></li>'
-      + '<li><h3>Trace</h3><p class="muted">Candidate causes are ranked through the prerequisite graph by dependency strength and your mastery history, not by proximity alone.</p></li>'
-      + '<li><h3>Probe</h3><p class="muted">A one-step question isolates the top suspect. Only a failed probe, with the Bayesian estimate below 0.45, makes it a confirmed gap.</p></li>'
-      + '<li><h3>Recover</h3><p class="muted">A short lesson with the misconception named, one worked example and a practice question. Learning is only credited after the lesson.</p></li>'
-      + '<li><h3>Verify</h3><p class="muted">A fresh problem with new numbers tests transfer. Passing raises mastery and unlocks the original problem.</p></li>'
-      + '</ol></section>'
+      + '<section id="how" class="section container" aria-labelledby="h-how"><div class="section-head"><h2 id="h-how" class="section-title" data-split>How a diagnosis works</h2></div>'
+      + '<div class="timeline" data-timeline><div class="tl-rail"><div class="tl-fill"></div></div>' + steps + '</div></section>'
 
-      + '<section id="domains" class="section container" aria-labelledby="h-dom"><h2 id="h-dom" class="h2">Examination domains</h2>'
-      + '<p class="muted measure">Each domain holds knowledge tracks. A track is a prerequisite graph, practice problems and verification templates, defined as data so new ones can be added without touching the engine.</p>'
-      + '<ul class="domains list-reset">' + domains + '</ul></section>'
+      + '<section id="evidence" class="section container" aria-labelledby="h-ev"><div class="section-head"><h2 id="h-ev" class="section-title" data-split>Evidence decides what happens next</h2>'
+      + '<p class="section-lede" data-reveal>Every diagnosis carries a score built from weighted evidence. A final answer alone counts for little. A step in your working that shows the error counts for a lot. The same wrong answer, scored by the real engine:</p></div>'
+      + '<div class="gauges" data-reveal>'
+      + '<div class="gauge-row"><div class="gauge-top"><strong>Final answer only</strong><span class="mono">' + ui.pct(ev.bare) + '%</span></div><div class="gauge-track"><span class="gauge-fill lo" data-gauge style="width:' + ui.pct(ev.bare) + '%"></span><i class="gauge-mark" style="left:45%"><b>45</b></i><i class="gauge-mark" style="left:75%"><b>75</b></i></div></div>'
+      + '<div class="gauge-row"><div class="gauge-top"><strong>Final answer plus the working that shows the step</strong><span class="mono">' + ui.pct(ev.shown) + '%</span></div><div class="gauge-track"><span class="gauge-fill hi" data-gauge style="width:' + ui.pct(ev.shown) + '%"></span><i class="gauge-mark" style="left:45%"><b>45</b></i><i class="gauge-mark" style="left:75%"><b>75</b></i></div></div></div>'
+      + '<div class="tiers" data-stagger>'
+      + '<article class="tier"><span class="range">below 45%</span><h3>Ask first</h3><p>Not enough to name a cause. One short question separates the likely explanations before anything is taught.</p></article>'
+      + '<article class="tier"><span class="range">45% to 75%</span><h3>Check the hypothesis</h3><p>A working hypothesis is shared openly and tested with a quick check, so it is confirmed or ruled out.</p></article>'
+      + '<article class="tier"><span class="range">75% or more</span><h3>Confirm and teach</h3><p>Your own working shows the cause, so no extra question is asked. Two questions without a cause lead to a worked solution and a review.</p></article>'
+      + '</div></section>'
 
-      + '<section class="section container" aria-labelledby="h-feat"><h2 id="h-feat" class="h2">What is in the prototype</h2>'
-      + '<ul class="featlist list-reset">'
-      + '<li><strong>Knowledge gap map.</strong> Interactive graph with pan, zoom, dependency highlighting and a concept panel.</li>'
-      + '<li><strong>Transparent mastery estimates.</strong> Bayesian Knowledge Tracing with observations and learning kept separate. Estimates are not calibrated measurements.</li>'
-      + '<li><strong>Safe answer checking.</strong> Numbers, units and algebraic expressions are parsed without eval and compared numerically.</li>'
-      + '<li><strong>Fresh verification.</strong> Generated problems with new numbers, graded the same way as the original.</li>'
-      + '<li><strong>Progress analytics.</strong> Mastery over time, recovery success, repeated misconceptions and the concepts worth strengthening next.</li>'
-      + '<li><strong>Ask anything.</strong> Type any question from any subject. With your own Gemini key, MINDTRACE builds a prerequisite map for it, judges your open-ended answer, asks a follow-up when it is unsure, and verifies learning with a fresh question. A scripted demo question works without a key.</li>'
-      + '<li><strong>Judge demo.</strong> A guided run of the whole loop with the fixture clearly labelled.</li></ul></section>'
+      + '<section class="section container" aria-labelledby="h-modes"><div class="section-head"><h2 id="h-modes" class="section-title" data-split>You choose how to be helped</h2><p class="section-lede" data-reveal>Nobody is trapped in questions. Ask for a hint or an explanation and you get one, with no penalty.</p></div><div class="modes" data-stagger>' + modes + '</div></section>'
 
-      + '<section id="honest" class="section container" aria-labelledby="h-real"><h2 id="h-real" class="h2">What is real and what is simulated</h2>'
-      + '<div class="card elev stack"><p><strong>Diagnosis engine.</strong> Rule-based and deterministic by default. Each result is labelled with the engine that produced it. Optionally, you can add your own Gemini key in Settings so unrecognised answers get an AI reading; that path is schema-validated but has not been exercised against the live API in this build.</p>'
-      + '<p><strong>Accounts and data.</strong> Profiles are local to this browser and have no password. There is no server or database yet. Real authentication and storage are on the roadmap.</p>'
-      + '<p><strong>Content.</strong> ' + MT.data.tracks.length + ' hand-authored tracks with one to two original problems each, and generated verification variants. This is a seed for the format, not a full syllabus. Maps for questions you ask are written by Gemini, validated, and not reviewed by a person.</p></div></section>'
+      + '<section class="section container" aria-label="What is in the prototype"><div class="facts" data-reveal>' + facts + '</div></section>'
 
-      + '<section class="section container cta"><h2 class="h2">See the whole loop in about three minutes</h2><p class="muted">The judge demo walks a wrong answer through diagnosis, a probe, recovery, a fresh verification problem and the updated graph.</p>'
-      + '<div class="row"><button class="btn primary lg" type="button" data-action="start-demo">Start the judge demo</button><a class="btn lg" href="#/signin">Create a profile</a></div></section>'
+      + '<section id="domains" class="section container" aria-labelledby="h-dom"><div class="section-head"><h2 id="h-dom" class="section-title" data-split>Examination domains</h2><p class="section-lede" data-reveal>A track is a prerequisite graph, practice problems and fresh-question generators, written as data. Or ask your own question from any subject.</p></div><ul class="domains list-reset" data-stagger>' + domainCards + '</ul></section>'
+
+      + '<section id="honest" class="section container" aria-labelledby="h-real"><div class="section-head"><h2 id="h-real" class="section-title" data-split>What is real and what is not</h2></div><div class="real" data-reveal>'
+      + '<div><h3>Diagnosis</h3><p>Rule-based and deterministic by default, labelled with the engine that produced it. Optionally, with your own Gemini key, unrecognised answers and your own questions get an AI reading. That path is validated and tested with mocked replies, and has not been run against the live API.</p></div>'
+      + '<div><h3>Accounts and data</h3><p>Profiles live in this browser and have no password. There is no server or database yet, so clearing site data deletes your progress.</p></div>'
+      + '<div><h3>Content</h3><p>' + builtIn.length + ' hand-authored tracks. Maps built from questions you ask are written by a model, validated for structure, and not reviewed by a person.</p></div>'
+      + '</div></section>'
+
+      + '<section class="section container cta"><h2 class="section-title" data-split>See the whole loop in about three minutes</h2><p class="section-lede" data-reveal>A wrong answer, a follow-up question, recovery, a fresh problem and the updated graph.</p>'
+      + '<div class="cta-row" data-reveal><button class="btn primary lg" type="button" data-action="start-demo" data-magnet>Start the judge demo</button><a class="btn lg" href="#/signin" data-magnet>Create a profile</a></div></section>'
       + '</main>'
-      + '<footer class="footer"><div class="container row between"><span class="brand small"><span class="brand-mark" aria-hidden="true"></span>MINDTRACE</span><span class="faint small">Hackathon prototype. Mastery values are estimates, not grades.</span></div></footer>';
+      + '<footer class="footer"><div class="container"><div class="footer-row"><span class="brand small"><span class="brand-mark" aria-hidden="true"></span>MINDTRACE</span><span class="faint small">Hackathon prototype. Mastery values are estimates, not grades.</span></div></div><div class="wordmark" aria-hidden="true">MINDTRACE</div></footer></div>';
   }
 
   ui.registerPage({
@@ -91,7 +116,10 @@
     if (!a) return;
     e.preventDefault();
     const el = document.getElementById(a.dataset.scroll);
-    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.setAttribute('tabindex', '-1'); el.focus({ preventScroll: true }); }
+    if (!el) return;
+    if (ui.motion && ui.motion.enabled()) ui.scrollTo(el.getBoundingClientRect().top + window.scrollY - 70, false);
+    else el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.setAttribute('tabindex', '-1'); el.focus({ preventScroll: true });
   });
   if (typeof module !== 'undefined' && module.exports) module.exports = { render };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -47,6 +47,14 @@ The user attached a platform-sized specification. After asking, the chosen scope
 - **Honesty about verifiers.** The adapter table marks seven of nine adapters as having no real deterministic verifier in the browser.
 - A Python patch with an unescaped quote silently applied nothing once; and a second patch deleted a shared helper. Both were caught by the test suite within a minute, which is the argument for keeping the suites fast.
 
+## Fifth pass: visual redesign with Lenis, GSAP, Vanta and react-bits ideas
+
+- **react-bits is React-only**, so none of its code was used. The ideas (split text, spotlight cards, magnetic buttons, marquee, count-up) were re-written in vanilla JS. The other three libraries were vendored from npm so the site remains static and CSP-clean (`script-src 'self'`).
+- **Tests run in reduced-motion mode.** Playwright's `reducedMotion: 'reduce'` makes the app render with no animation, which removes a whole class of flaky waits. A dedicated spec turns motion back on and checks the effects.
+- **A test caught an accessibility bug:** the split headline's `aria-label` had lost the space at the line break. Fixed and covered.
+- **Reviewing frames by eye mattered:** the first hero had the network crossing the headline, a headline that wrapped to four lines, mismatched left edges between nav and sections, a focus ring on the h1, edges visible through translucent graph nodes, and green bars for tracks that had not been started. All fixed.
+- **Restraint:** no gradient decoration beyond the legibility masks, no backdrop blur, no glow or sparkle, no invented statistics (the numbers on the landing page are computed from the data, and the evidence gauges come from the real engine).
+
 ## Not done
 
 Real auth, database, live Gemini verification of any of the three AI paths, KaTeX, cross-browser runs. See `docs/ROADMAP.md`.

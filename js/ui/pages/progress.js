@@ -32,7 +32,7 @@
       const recs = t.concepts.map((c) => store.record(t.id, c.id));
       const withEv = recs.filter((r) => r.obs > 0).length;
       const avg = recs.reduce((s, r) => s + r.p, 0) / recs.length;
-      return '<li><div class="row between"><span><strong>' + esc(t.topic) + '</strong><br><span class="faint small">' + withEv + ' of ' + t.concepts.length + ' concepts have evidence</span></span><span class="mono">' + ui.f2(avg) + '</span></div>' + ui.meter(avg, avg >= 0.8 ? 'mastered' : avg >= 0.45 ? 'verify' : 'gap') + '</li>';
+      return '<li><div class="row between"><span><strong>' + esc(t.topic) + '</strong><br><span class="faint small">' + withEv + ' of ' + t.concepts.length + ' concepts have evidence</span></span><span class="mono">' + ui.f2(avg) + '</span></div>' + ui.meter(avg, withEv === 0 ? 'idle' : avg >= 0.8 ? 'mastered' : avg >= 0.45 ? 'verify' : 'gap') + '</li>';
     }).join('');
 
     return '<div class="page-head"><div><p class="eyebrow">Progress and analytics</p><h1 id="page-title" class="h1">How your understanding is changing</h1></div></div>'
@@ -41,7 +41,7 @@
       + '<section class="card" aria-labelledby="at-h"><div class="card-head"><h2 id="at-h">Attempts and correctness</h2><span class="faint small">' + attempts.length + ' attempt' + (attempts.length === 1 ? '' : 's') + '</span></div>' + attChart + '</section>'
       + '<div class="grid two">'
       + '<section class="card" aria-labelledby="rc-h"><div class="card-head"><h2 id="rc-h">Recovery success</h2></div>'
-      + (rec.started ? '<div class="grid" style="grid-template-columns:repeat(3,1fr)"><div class="stat"><span class="num">' + rec.started + '</span><span class="cap">started</span></div><div class="stat"><span class="num mastered-text">' + rec.verified + '</span><span class="cap">verified</span></div><div class="stat"><span class="num gap-text">' + rec.failed + '</span><span class="cap">verification failed</span></div></div><p class="muted small" style="margin-top:10px">' + (rec.rate != null ? ui.pct(rec.rate) + '% of started recoveries reached verified mastery.' : '') + '</p>' : empty('No recovery sessions yet.'))
+      + (rec.started ? '<div class="grid" style="grid-template-columns:repeat(3,1fr)"><div class="stat"><span class="num" data-count="' + rec.started + '">' + rec.started + '</span><span class="cap">started</span></div><div class="stat"><span class="num mastered-text" data-count="' + rec.verified + '">' + rec.verified + '</span><span class="cap">verified</span></div><div class="stat"><span class="num gap-text" data-count="' + rec.failed + '">' + rec.failed + '</span><span class="cap">verification failed</span></div></div><p class="muted small" style="margin-top:10px">' + (rec.rate != null ? ui.pct(rec.rate) + '% of started recoveries reached verified mastery.' : '') + '</p>' : empty('No recovery sessions yet.'))
       + '</section>'
       + '<section class="card" aria-labelledby="mi-h"><div class="card-head"><h2 id="mi-h">Repeated misconceptions</h2></div>'
       + (mis.length ? '<ul class="list">' + mis.slice(0, 5).map((m) => { const c = MT.data.track(m.trackId).concepts.find((x) => x.id === m.conceptId); return '<li><span><strong>' + esc(c.name) + '</strong><br><span class="small muted">' + fmt(c.lesson.misconception) + '</span></span><span class="badge ' + (m.count > 1 ? 'gap' : '') + '">' + m.count + (m.count > 1 ? ' times' : ' time') + '</span></li>'; }).join('') + '</ul>' : '<p class="muted">None logged. Misconceptions appear after a diagnosed error points at a concept.</p>')

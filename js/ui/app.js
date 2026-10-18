@@ -20,6 +20,7 @@
   }
   const goto = (hash) => { if (location.hash === hash) ui.render(); else location.hash = hash; };
   ui.go = goto;
+  ui.scrollTo = ui.scrollTo || ((y) => window.scrollTo(0, y)); // replaced by the motion layer when Lenis is active
   ui.link = (name, params) => '#/app/' + name + (params ? '?' + new URLSearchParams(params).toString() : '');
 
   /* ---------- theme ---------- */
@@ -34,6 +35,7 @@
     try { localStorage.setItem('mindtrace.theme', theme); } catch (e) { /* ignore */ }
     if (ui.store.profile()) ui.store.updateSettings({ theme });
     ui.applyTheme();
+    if (ui.motion) ui.motion.retheme();
   };
 
   /* ---------- toast and dialog ---------- */
@@ -55,7 +57,8 @@
         + '<h2 id="dlg-title">' + ui.esc(opts.title) + '</h2><p id="dlg-body" class="muted">' + ui.esc(opts.body) + '</p>'
         + '<div class="actions"><button class="btn" type="button" data-dlg="no">Cancel</button>'
         + '<button class="btn ' + (opts.danger ? 'danger' : 'primary') + '" type="button" data-dlg="yes">' + ui.esc(opts.confirmLabel || 'Confirm') + '</button></div></div></div>';
-      const close = (v) => { root.innerHTML = ''; document.removeEventListener('keydown', onKey, true); if (prev && prev.focus) prev.focus(); resolve(v); };
+      if (ui.scrollLock) ui.scrollLock(true);
+      const close = (v) => { if (ui.scrollLock) ui.scrollLock(false); root.innerHTML = ''; document.removeEventListener('keydown', onKey, true); if (prev && prev.focus) prev.focus(); resolve(v); };
       const onKey = (e) => {
         if (e.key === 'Escape') { e.preventDefault(); close(false); }
         if (e.key === 'Tab') {
@@ -84,7 +87,7 @@
     ui.route = route;
     const root = document.getElementById('app');
     const activeKey = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk : null;
-    const scrollY = route.path === lastPath ? window.scrollY : 0;
+    const scrollY = route.path === lastPath ? window.scrollY : 0; // read before the DOM is replaced
     let html;
     let page = null;
     ui.applyTheme();
@@ -106,6 +109,7 @@
       console.error(err);
       html = '<main id="main" class="container section"><div class="notice bad">' + ui.icon('alert') + '<div><strong>Something went wrong on this page.</strong><p class="muted">Your progress is saved. Try reloading, or go back to the dashboard.</p></div></div><p style="margin-top:16px"><a class="btn" href="#/app/dashboard">Dashboard</a></p></main>';
     }
+    if (ui.motion) ui.motion.teardown();
     root.innerHTML = html;
     document.title = (page && page.title ? page.title + ' | ' : '') + 'MINDTRACE';
 
@@ -114,13 +118,15 @@
       if (v != null) el.value = v;
     });
     if (page && page.mount) page.mount(root, route);
+    const entering = route.path !== lastPath;
+    if (ui.motion) ui.motion.enter(root, { entering });
 
     if (route.path !== lastPath) {
-      window.scrollTo(0, 0);
+      ui.scrollTo(0);
       const h = root.querySelector('#page-title') || root.querySelector('h1');
       if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
     } else {
-      window.scrollTo(0, scrollY);
+      ui.scrollTo(scrollY);
       const target = ui.focusAfter ? root.querySelector(ui.focusAfter) : (activeKey ? root.querySelector('[data-fk="' + activeKey + '"]') : null);
       if (target) { if (!target.hasAttribute('tabindex') && !/^(A|BUTTON|INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) target.setAttribute('tabindex', '-1'); target.focus({ preventScroll: false }); }
     }
@@ -157,6 +163,7 @@
 
   ui.actions['toggle-nav'] = () => {
     const open = document.body.classList.toggle('nav-open');
+    if (ui.scrollLock) ui.scrollLock(open);
     const b = document.querySelector('[data-action="toggle-nav"]');
     if (b) b.setAttribute('aria-expanded', String(open));
   };
@@ -164,6 +171,7 @@
   ui.actions['sign-out'] = () => { ui.store.signOut(); ui.drafts = {}; ui.go('#/'); ui.toast('Signed out. Your progress stays saved in this browser.'); };
 
   ui.boot = function () {
+    if (ui.motion) ui.motion.init();
     if (!ui.store.persistent) {
       console.warn('localStorage unavailable: progress will not persist after reload.');
     }

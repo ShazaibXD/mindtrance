@@ -96,3 +96,14 @@ The demo fixture is a hand-written map and a keyword rubric for one history ques
 4. **Update.** BKT observations use format-adjusted guess rates. The recovery lesson applies P(T) = 0.30 once. Open-ended answers on rubric-type subjects update the rubric accumulator instead. Estimates decay toward the prior with a half-life that doubles on each spaced verification.
 
 Other session paths: `DIRECT_EXPLANATION` (explain and teach-from-basics, no questions first), `REASONING_CHECK` (right answer, no reasoning shown). See `docs/SPEC_ALIGNMENT.md` for the full mapping.
+
+## Motion layer
+
+`js/ui/motion.js` owns all animation. It is optional by construction:
+
+- **Libraries** (vendored in `vendor/`): Lenis for smooth scroll, GSAP and ScrollTrigger for reveals, a scrubbed timeline, count-ups, the evidence gauges and graph entrance, Vanta NET (with three.js r134) for the hero and sign-in backgrounds.
+- **Effects** inspired by react-bits, written in plain JS: split-text word reveal, spotlight cards (two CSS variables updated by one delegated listener), magnetic buttons, a marquee, count-up.
+- **Opt-out:** under `prefers-reduced-motion` nothing is initialised and no hidden initial states exist, so the page is immediately complete. Initial states are set by GSAP itself, so a script failure cannot leave content hidden.
+- **Lifecycle:** `app.js` calls `motion.teardown()` before each render and `motion.enter()` after. A new page gets the full entrance; a state change on the same page (probe answered, node selected) only animates the stage panel.
+- **WebGL:** probed once, the probe context is released, the Vanta effect is created only while the hero is on screen and destroyed when it is not, and any failure leaves the CSS background.
+- **Heavy files load lazily:** three.js and Vanta (about 630 KB) are injected only when a page with a Vanta background is shown.

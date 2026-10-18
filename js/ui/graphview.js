@@ -66,7 +66,7 @@
       const label = meta.label + (isTarget ? ' · target' : '');
       nodes += '<g class="gv-node st-' + st.status + (isSel ? ' sel' : '') + (dim ? ' dim' : '') + (isTarget ? ' target' : '') + '" data-id="' + U.esc(c.id) + '" transform="translate(' + p.x + ' ' + p.y + ')"'
         + ' tabindex="0" role="button" aria-pressed="' + isSel + '" aria-label="' + U.esc(c.name + ', ' + label + ', mastery estimate ' + U.f2(st.p)) + '">'
-        + '<rect width="' + NODE_W + '" height="' + NODE_H + '" rx="10"/>'
+        + '<rect class="gv-base" width="' + NODE_W + '" height="' + NODE_H + '" rx="10"/><rect class="gv-card" width="' + NODE_W + '" height="' + NODE_H + '" rx="10"/>'
         + '<circle class="glyph-bg" cx="18" cy="19" r="9"/><text class="glyph" x="18" y="23" text-anchor="middle">' + meta.glyph + '</text>'
         + '<text class="name" x="36" y="' + (lines.length > 1 ? 18 : 23) + '">' + U.esc(lines[0]) + '</text>'
         + (lines[1] ? '<text class="name" x="36" y="32">' + U.esc(lines[1]) + '</text>' : '')

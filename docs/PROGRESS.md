@@ -5,7 +5,7 @@ Status labels: **Verified** = exercised end to end in a browser, **Tested** = au
 - **Overall completion:** about 90% of the adapted static-prototype scope. About 50% of the original brief as written (Next.js, FastAPI, Supabase and live AI were deliberately replaced; see `docs/ARCHITECTURE.md`).
 - **Current phase:** Phase 14, final verification
 - **Current task:** documentation and push
-- **Tests passing:** 192 / 192 unit and smoke (`npm test`) and 51 / 51 Playwright end-to-end (`npm run test:e2e`), 0 failing
+- **Tests passing:** 194 / 194 unit and smoke (`npm test`) and 58 / 58 Playwright end-to-end (`npm run test:e2e`), 0 failing
 - **Spec alignment:** see `docs/SPEC_ALIGNMENT.md`
 - **Latest commit before this file was updated:** `d569cd1`
 - **Blockers:** none for the prototype. Live Gemini testing needs an API key. Real auth and database need a Supabase project.
@@ -33,6 +33,7 @@ Status labels: **Verified** = exercised end to end in a browser, **Tested** = au
 | Optional Gemini classification | Tested with mocks only. **Not verified against the live API.** |
 | Ask anything: map from any question, open-ended answer judging, follow-up question, concept-targeted fresh question | Tested (unit and e2e) with mocked Gemini; the keyless demo fixture is Verified end-to-end. **Live Gemini output quality is unverified** |
 | Judge demo mode | Verified in browser |
+| Visual redesign and motion (Lenis, GSAP, Vanta) | Verified visually in Chrome (dark, light, phone) and by 7 browser tests; screenshots reviewed by hand |
 | Spec outcome taxonomy, composite evidence score, two-probe ceiling, escalation, recovery cap | Tested and verified end-to-end in Chrome |
 | Learning modes, hints, explanations, reasoning check, clarification | Tested and verified end-to-end in Chrome |
 | Learner model: evidence-based statuses, decay, rubric track, spaced review | Tested (unit); dashboard review card tested in the browser only indirectly |
