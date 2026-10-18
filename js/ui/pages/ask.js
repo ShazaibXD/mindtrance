@@ -73,6 +73,7 @@
     if (!r.ok && r.clarify) { ui.askClarify = { question: r.error, original: question }; ui.drafts['ask-d'] = ''; ui.focusAfter = '#ask-d'; ui.render(); return; }
     if (!r.ok) { ui.askError = r.error; ui.focusAfter = '#ask-q'; ui.render(); return; }
     const id = ui.store.addCustomTrack({ question, spec: r.spec, source: 'gemini' });
+    if (r.flagged) ui.toast('Your question contained instructions aimed at the AI. They were treated as plain text.');
     ui.askClarify = null; ui.drafts['ask-d'] = '';
     ui.drafts['ask-q'] = '';
     ui.go(ui.link('workspace', { track: id, problem: 'q' }));

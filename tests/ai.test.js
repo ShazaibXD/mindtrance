@@ -4,7 +4,7 @@ const MT = require('./load.js');
 
 const track = MT.data.track('eee-transformers');
 const problem = MT.data.instantiate(track.problems[0], 1);
-const good = { category: 'PREREQUISITE_GAP', confidence: 0.7, suspected_concept_id: 'turns_ratio', evidence_from_student_work: 'Multiplied by N1/N2.' };
+const good = { category: 'PREREQUISITE_GAP', confidence: 0.7, suspected_concept_id: 'turns_ratio', evidence_from_student_work: 'Multiplied by N1/N2.', evidence_quote: 'V2 = 240 x 10' };
 const reply = (obj, ok = true, status = 200) => async () => ({ ok, status, json: async () => ({ candidates: [{ content: { parts: [{ text: typeof obj === 'string' ? obj : JSON.stringify(obj) }] } }] }) });
 
 test('valid output is accepted and normalised', () => {

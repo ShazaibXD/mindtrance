@@ -84,7 +84,7 @@
     const store = ui.store;
     const note = ui.stageNote;
     const focusId = ctx.session && ctx.session.gap ? ctx.session.gap.conceptId : (ctx.session && ctx.session.diagnosis && ctx.session.diagnosis.candidates && ctx.session.diagnosis.candidates[ctx.session.probeIndex || 0] ? ctx.session.diagnosis.candidates[ctx.session.probeIndex || 0].id : ctx.track.target);
-    return '<div class="page-head"><div><p class="eyebrow">Problem workspace</p><h1 id="page-title" class="h1">' + fmt(ctx.def.title) + '</h1></div><div class="row"><span class="badge gold">' + esc(ctx.track.exam) + '</span><span class="badge">' + esc(ctx.track.subject) + '</span><span class="badge">' + esc(ctx.def.difficulty) + '</span>' + (ctx.track.analysis ? '<span class="badge" title="Question type as read by the map builder">' + esc(ctx.track.analysis.question_type.replace(/_/g, ' ').toLowerCase()) + '</span><span class="badge">' + esc(ctx.track.analysis.education_level) + '</span>' : '') + '</div></div>'
+    return '<div class="page-head"><div><p class="eyebrow">Problem workspace</p><h1 id="page-title" class="h1">' + fmt(ctx.def.title) + '</h1></div><div class="row"><span class="badge gold">' + esc(ctx.track.exam) + '</span><span class="badge">' + esc(ctx.track.subject) + '</span><span class="badge">' + esc(ctx.def.difficulty) + '</span>' + (ctx.track.custom ? '<span class="badge sage" title="Subject adapter and mastery estimator">' + esc(MT.adapters.forSubject(ctx.track.subject, ctx.track.topic).name) + ' &middot; ' + (MT.adapters.estimatorFor(MT.adapters.forSubject(ctx.track.subject, ctx.track.topic), ctx.track.analysis ? ctx.track.analysis.question_type : '') === 'RUBRIC_BETA' ? 'rubric estimate' : 'BKT estimate') + '</span>' : '') + (ctx.track.analysis ? '<span class="badge" title="Question type as read by the map builder">' + esc(ctx.track.analysis.question_type.replace(/_/g, ' ').toLowerCase()) + '</span><span class="badge">' + esc(ctx.track.analysis.education_level) + '</span>' : '') + '</div></div>'
       + '<div class="ws"><div class="stack" style="--gap-y:16px">' + selectors(ctx)
       + '<section class="card" aria-labelledby="prob-h"><p class="eyebrow" id="prob-h">Problem</p><p class="problem-text math">' + fmt(problem.statement) + '</p></section>'
       + attemptCard(ctx, problem) + '</div>'
@@ -156,7 +156,8 @@
     const session = MT.flow.startSession(ui.store, ctx.track.id, ctx.def.id);
     const res = MT.flow.submitAttempt(ui.store, session.id, answer, working, { override, judgement, mode: ui.mode });
     if (!res.ok) { ui.wsError = res.error; ui.render(); return; }
-    if (aiNote) note('info', '<strong>Gemini was not used.</strong>' + aiNote);
+    if (judgement && judgement.flagged) note('info', '<strong>Your text contained instructions aimed at the AI.</strong><p class="small">They were treated as plain text and had no effect on the result.</p>');
+    else if (aiNote) note('info', '<strong>Gemini was not used.</strong>' + aiNote);
     else if (override) note('info', '<strong>The rule-based engine had no signature for this answer, so Gemini classified it.</strong><p class="small">Its output was validated against the schema and the knowledge graph. Correctness was still checked deterministically.</p>');
     ui.focusAfter = '#stage-title';
     ui.go(sessionLink(session.id));

@@ -98,7 +98,7 @@ test('validateJudgement accepts correct and incorrect verdicts and rejects inval
 test('judgeOpen sends the question and concept ids and validates the reply', async () => {
   const { track } = withFixture();
   let body;
-  const r = await MT.ai.judgeOpen({ apiKey: 'k', fetch: async (u, i) => { body = JSON.parse(i.body); return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({ is_correct: false, category: 'CONCEPTUAL_GAP', confidence: 0.6, suspected_concept_id: 'versailles_wwii', evidence_from_student_work: 'One-sided claim.' }) }] } }] }) }; } }, track, track.question, 'The treaty caused it.', '');
+  const r = await MT.ai.judgeOpen({ apiKey: 'k', fetch: async (u, i) => { body = JSON.parse(i.body); return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({ is_correct: false, category: 'CONCEPTUAL_GAP', confidence: 0.6, suspected_concept_id: 'versailles_wwii', evidence_from_student_work: 'One-sided claim.', evidence_quote: 'The treaty caused it.' }) }] } }] }) }; } }, track, track.question, 'The treaty caused it.', '');
   assert.ok(r.ok);
   assert.equal(r.value.category, 'CONCEPTUAL_GAP');
   assert.ok(body.contents[0].parts[0].text.includes('versailles_wwii'));
@@ -260,4 +260,20 @@ test('an uncertain, supporting dependency is carried into the graph and marked a
   const gr = MT.graph.build(track);
   assert.ok(gr.parents.get('resentment').find((p) => p.id === 'reparations').confidence < 0.6);
   assert.equal(gr.parents.get('resentment').find((p) => p.id === 'ww1_settlement').strength, 'REQUIRED');
+});
+
+test('a numerical question on an objective subject stays on the BKT track; a history essay uses the rubric track', () => {
+  const store = mkStore(); store.signUp('Tess');
+  const spec = fixtureSpec();
+  spec.subject = 'Physics'; spec.title = 'Transformer current'; spec.analysis = { question_type: 'NUMERICAL_PROBLEM', education_level: 'Class 12', language: 'en' };
+  const id = store.addCustomTrack({ question: 'A transformer steps 240 V down by 10:1 into 12 ohms. Find the current.', spec, source: 'gemini' });
+  const s = F.startSession(store, id, 'q');
+  const j = { engine: 'gemini', isCorrect: true, category: 'CORRECT_UNDERSTANDING', confidence: 0.9, hintConcept: null, evidence: ['ok'] };
+  F.submitAttempt(store, s.id, '2 A', 'V2 = 24 V then I = V/R', { judgement: j });
+  assert.equal(store.events().filter((e) => e.type === 'RUBRIC').length, 0);
+  assert.ok(store.events().some((e) => e.type === 'OBSERVATION' && e.correct));
+  const hist = withFixture('Bilal');
+  const s2 = F.startSession(hist.store, hist.id, 'q');
+  F.submitAttempt(hist.store, s2.id, 'A long enough and well argued answer about reparations and resentment.', 'My reasoning.', { judgement: MT.custom.fixtureJudge('reparations resentment') });
+  assert.equal(hist.store.events().filter((e) => e.type === 'RUBRIC').length, 1);
 });

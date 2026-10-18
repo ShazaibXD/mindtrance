@@ -131,7 +131,7 @@ test.describe('with a Gemini key (Google endpoint mocked)', () => {
     const spec = await page.evaluate(() => MT.custom.FIXTURE.spec);
     const calls = await mockGoogle(page, {
       onGenerate: async () => ({ json: spec }),
-      onJudge: async () => ({ is_correct: false, category: 'PREREQUISITE_GAP', confidence: 0.45, suspected_concept_id: 'reparations', evidence_from_student_work: 'The answer never links payments to the economy.' }),
+      onJudge: async () => ({ is_correct: false, category: 'PREREQUISITE_GAP', confidence: 0.45, suspected_concept_id: 'reparations', evidence_from_student_work: 'The answer never links payments to the economy.', evidence_quote: 'Germany was punished and had to pay a lot.' }),
     });
     await addKey(page);
     await page.getByRole('link', { name: 'Ask anything' }).click();
@@ -184,7 +184,7 @@ test.describe('with a Gemini key (Google endpoint mocked)', () => {
     const spec = await page.evaluate(() => MT.custom.FIXTURE.spec);
     await mockGoogle(page, {
       onGenerate: async () => ({ json: spec }),
-      onJudge: async () => ({ is_correct: false, category: 'PREREQUISITE_GAP', confidence: 0.9, suspected_concept_id: 'invented_concept', evidence_from_student_work: 'x' }),
+      onJudge: async () => ({ is_correct: false, category: 'PREREQUISITE_GAP', confidence: 0.9, suspected_concept_id: 'invented_concept', evidence_from_student_work: 'x', evidence_quote: 'Some answer that is long enough.' }),
     });
     await addKey(page);
     await page.getByRole('link', { name: 'Ask anything' }).click();

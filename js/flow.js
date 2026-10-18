@@ -100,7 +100,8 @@
       if (j.isCorrect) res = { engine: j.engine, category: 'CORRECT_UNDERSTANDING', confidence: j.confidence, evidence: j.evidence, matchedBy: j.matchedBy || 'ai', hintConcept: null, candidates: [] };
       else res = applyOverride(track, res, j, mastery);
       res.judged = true;
-      attachRubric(res, j);
+      res.flagged = !!j.flagged;
+      attachRubric(res, j, track);
     }
 
     const override = opts && opts.override;
@@ -123,7 +124,11 @@
   }
 
   /* Open-ended work is scored on a rubric, not as a right-or-wrong observation (spec 11.2). */
-  function attachRubric(res, j) {
+  function attachRubric(res, j, track) {
+    const adapter = MT.adapters.forSubject(track.subject, track.topic);
+    const qType = track.analysis ? track.analysis.question_type : 'CONCEPT_EXPLANATION';
+    res.estimator = MT.adapters.estimatorFor(adapter, qType);
+    if (res.estimator !== 'RUBRIC_BETA') return; // objective items stay on the BKT track
     res.rubricScore = typeof j.rubricScore === 'number' ? j.rubricScore : (j.isCorrect ? 0.85 : 0.35);
     res.rubricWeight = 0.5 + 0.5 * Math.min(1, Math.max(0, j.confidence || 0));
   }
@@ -498,7 +503,7 @@
       res = applyOverride(track, base, judgement, mastery);
       res.judged = true;
     }
-    attachRubric(res, judgement);
+    attachRubric(res, judgement, track);
     return settle(store, s, res, track, problem, store.now(), 'reasoning');
   }
 
