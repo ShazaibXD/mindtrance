@@ -21,6 +21,12 @@
   };
   const CATEGORIES = OUTCOMES; // original name, still used by the UI
 
+  /* Outcome names used before the spec taxonomy. Saved data from earlier versions is migrated with this. */
+  const LEGACY_OUTCOMES = { CARELESS_SLIP: 'POSSIBLE_CARELESS_SLIP', UNIT_ERROR: 'CALCULATION_OR_UNIT_ERROR', CONCEPT_MISCONCEPTION: 'CONCEPTUAL_GAP', CORRECT: 'CORRECT_UNDERSTANDING' };
+  const normalizeOutcome = (o) => LEGACY_OUTCOMES[o] || o;
+  /* Never throws: an unknown outcome gets a neutral label instead of crashing a page. */
+  const outcomeMeta = (o) => OUTCOMES[normalizeOutcome(o)] || { label: String(o || 'Unknown outcome').replace(/_/g, ' ').toLowerCase(), kind: 'other', blurb: '' };
+
   const kindOf = (outcome) => (OUTCOMES[outcome] ? OUTCOMES[outcome].kind : 'other');
   const needsCandidates = (outcome) => ['gap', 'partial', 'ambiguous'].includes(kindOf(outcome));
 
@@ -203,6 +209,6 @@
     return res;
   }
 
-  MT.diagnose = { CATEGORIES, OUTCOMES, WEIGHTS, THRESHOLDS, SOURCE_LABEL, kindOf, needsCandidates, compositeEvidence, tierOf, withEvidence, effectiveOutcome, classify, diagnose, checkAnswer };
+  MT.diagnose = { CATEGORIES, OUTCOMES, LEGACY_OUTCOMES, normalizeOutcome, outcomeMeta, WEIGHTS, THRESHOLDS, SOURCE_LABEL, kindOf, needsCandidates, compositeEvidence, tierOf, withEvidence, effectiveOutcome, classify, diagnose, checkAnswer };
   if (typeof module !== 'undefined' && module.exports) module.exports = MT.diagnose;
 })(typeof window !== 'undefined' ? window : globalThis);

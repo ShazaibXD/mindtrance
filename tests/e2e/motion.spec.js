@@ -75,15 +75,18 @@ test.describe('with motion enabled', () => {
   test('graph interaction is not hijacked by smooth scroll', async ({ page }) => {
     await startDemo(page);
     await page.getByRole('link', { name: 'Gap map' }).click();
+    // let the entrance animation finish so the graph has its final size
+    await expect.poll(() => page.locator('.gv-node').evaluateAll((els) => els.length > 0 && els.every((e) => Number(getComputedStyle(e).opacity) > 0.99)), { timeout: 8000 }).toBe(true);
     const vp = page.locator('.gv-viewport');
-    await expect.poll(() => vp.getAttribute('transform')).not.toBeNull();
     const before = await vp.getAttribute('transform');
     const box = await page.locator('.gv-svg').boundingBox();
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.keyboard.down('Control');
-    await page.mouse.wheel(0, -400);
-    await page.keyboard.up('Control');
-    await expect.poll(() => vp.getAttribute('transform')).not.toBe(before);
+    await expect(async () => {
+      await page.keyboard.down('Control');
+      await page.mouse.wheel(0, -400);
+      await page.keyboard.up('Control');
+      expect(await vp.getAttribute('transform')).not.toBe(before);
+    }).toPass({ timeout: 8000 });
   });
 });
 

@@ -72,9 +72,9 @@ There are no required environment variables and no `.env` files. The optional Ge
 ## Running tests
 
 ```bash
-npm test               # 194 unit and smoke tests, no install needed
+npm test               # 198 unit and smoke tests, no install needed
 npm install            # once, for Playwright
-npm run test:e2e       # 58 browser tests driving the real UI
+npm run test:e2e       # 59 browser tests driving the real UI
 ```
 
 The unit suite covers the engine, content, state machine, store, flow, analytics, UI helpers, graph rendering and three headless-Chrome smoke tests (skipped when Chrome is not installed; set `CHROME_BIN` to point at a browser). The e2e suite clicks through the whole student journey. See `docs/TESTING.md`.

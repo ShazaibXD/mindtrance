@@ -1,8 +1,8 @@
 # Testing
 
 ```bash
-npm test             # unit and smoke tests: node --test tests/*.test.js (194 tests, no install)
-npm run test:e2e     # Playwright browser tests (58 tests)
+npm test             # unit and smoke tests: node --test tests/*.test.js (198 tests, no install)
+npm run test:e2e     # Playwright browser tests (59 tests)
 ```
 
 Unit tests need Node 20 or newer and nothing else. The e2e suite needs `npm install` once and uses the Google Chrome already on the machine (`channel: 'chrome'`), so no browser is downloaded. To use Playwright's own Chromium instead: `npx playwright install chromium` then `E2E_CHANNEL=chromium npm run test:e2e`. The suite starts its own dependency-free static server on port 4174.

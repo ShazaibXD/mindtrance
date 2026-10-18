@@ -5,7 +5,7 @@ Status labels: **Verified** = exercised end to end in a browser, **Tested** = au
 - **Overall completion:** about 90% of the adapted static-prototype scope. About 50% of the original brief as written (Next.js, FastAPI, Supabase and live AI were deliberately replaced; see `docs/ARCHITECTURE.md`).
 - **Current phase:** Phase 14, final verification
 - **Current task:** documentation and push
-- **Tests passing:** 194 / 194 unit and smoke (`npm test`) and 58 / 58 Playwright end-to-end (`npm run test:e2e`), 0 failing
+- **Tests passing:** 198 / 198 unit and smoke (`npm test`) and 59 / 59 Playwright end-to-end (`npm run test:e2e`), 0 failing
 - **Spec alignment:** see `docs/SPEC_ALIGNMENT.md`
 - **Latest commit before this file was updated:** `d569cd1`
 - **Blockers:** none for the prototype. Live Gemini testing needs an API key. Real auth and database need a Supabase project.

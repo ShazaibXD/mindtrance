@@ -55,6 +55,12 @@ The user attached a platform-sized specification. After asking, the chosen scope
 - **Reviewing frames by eye mattered:** the first hero had the network crossing the headline, a headline that wrapped to four lines, mismatched left edges between nav and sections, a focus ring on the h1, edges visible through translucent graph nodes, and green bars for tracks that had not been started. All fixed.
 - **Restraint:** no gradient decoration beyond the legibility masks, no backdrop blur, no glow or sparkle, no invented statistics (the numbers on the landing page are computed from the data, and the evidence gauges come from the real engine).
 
+## Bug-fix pass
+
+- **Saved data from earlier versions crashed the diagnosis card.** Old outcome names (`CARELESS_SLIP`, `UNIT_ERROR`, `CONCEPT_MISCONCEPTION`, `CORRECT`) were kept in saved sessions and events, and the new UI looked them up in a table that no longer had them, which produced the "Something went wrong" page for anyone returning with saved progress. Fixed twice over: a one-time migration of stored data (schema 2) and a lookup that cannot throw (`outcomeMeta`). A unit test and a browser test use a realistic old save, and the browser test was confirmed to fail without the fix.
+- **Nothing else found** by a randomized stress test of the flow engine (400 runs of 40 random steps checking state, estimate range and serialisability), a sweep of every route at three widths with and without motion, and rapid navigation, history and double-click checks.
+- **Two flaky tests made reliable:** the headless-Chrome smoke tests now retry when the machine is busy, and the graph-zoom test waits for the entrance animation to finish.
+
 ## Not done
 
 Real auth, database, live Gemini verification of any of the three AI paths, KaTeX, cross-browser runs. See `docs/ROADMAP.md`.

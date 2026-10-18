@@ -31,7 +31,7 @@
 
   function attemptStrip(attempts) {
     return '<ol class="strip list-reset" aria-label="Attempts in order">' + attempts.map((a, i) => {
-      const gl = GLYPH[a.category] || ['?', '', a.category];
+      const gl = GLYPH[MT.diagnose.normalizeOutcome(a.category)] || ['?', '', a.category];
       return '<li class="cell ' + gl[1] + '" title="Attempt ' + (i + 1) + ': ' + esc(gl[2]) + '"><span aria-hidden="true">' + gl[0] + '</span><span class="sr-only">Attempt ' + (i + 1) + ': ' + esc(gl[2]) + '</span></li>';
     }).join('') + '</ol><p class="hint">&#10003; correct &middot; S possible slip &middot; C calculation or unit &middot; R reading &middot; P procedural &middot; G prerequisite &middot; M conceptual &middot; ~ partial &middot; ? not enough evidence</p>';
   }

@@ -52,7 +52,7 @@
   };
 
   const KIND_CLS = { correct: 'mastered', unverified: 'verify', gap: 'gap', slip: 'verify', partial: 'verify', language: 'verify', ambiguous: 'suspect' };
-  const outcomeCls = (outcome) => KIND_CLS[MT.diagnose.kindOf(outcome)] || '';
+  const outcomeCls = (outcome) => KIND_CLS[MT.diagnose.outcomeMeta(outcome).kind] || '';
 
   const badge = (cls, text, dot) => '<span class="badge ' + cls + '">' + (dot ? '<span class="dot"></span>' : '') + esc(text) + '</span>';
   const statusBadge = (st) => badge(STATUS[st].cls, STATUS[st].label, true);

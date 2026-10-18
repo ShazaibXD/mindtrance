@@ -16,7 +16,7 @@
     const d = (a, b) => ' (' + ui.f2(a) + ' to ' + ui.f2(b) + ')';
     switch (ev.type) {
       case 'ATTEMPT': {
-        const label = MT.diagnose.OUTCOMES[ev.category] ? MT.diagnose.OUTCOMES[ev.category].label : ev.category;
+        const label = MT.diagnose.outcomeMeta(ev.category).label;
         return { text: ev.correct ? 'Solved a problem' : 'Attempt classified as ' + label.toLowerCase(), tone: ev.correct ? 'mastered' : 'verify' };
       }
       case 'OBSERVATION': {

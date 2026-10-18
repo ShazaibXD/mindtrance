@@ -30,6 +30,7 @@
     sessions: {},
     customs: {},
     reviews: {},
+    schema: 2,
     seq: 1,
   });
 
@@ -64,8 +65,21 @@
       if (!p) throw new Error('No active profile');
       if (!p.data.customs) p.data.customs = {}; // saves from before custom questions existed
       if (!p.data.reviews) p.data.reviews = {};
+      if ((p.data.schema || 1) < 2) migrateOutcomes(p.data); // saves from before the outcome taxonomy
       return p.data;
     };
+
+    /* One-time rename of old outcome names in saved sessions and events. */
+    function migrateOutcomes(d) {
+      const fix = MT.diagnose.normalizeOutcome;
+      for (const e of d.events || []) if (e.category) e.category = fix(e.category);
+      for (const s of Object.values(d.sessions || {})) {
+        if (s.diagnosis && s.diagnosis.category) s.diagnosis.category = fix(s.diagnosis.category);
+        if (s.gap && s.gap.outcome) s.gap.outcome = fix(s.gap.outcome);
+        for (const h of s.history || []) if (h.category) h.category = fix(h.category);
+      }
+      d.schema = 2;
+    }
 
     /* Make the active profile's own questions available as tracks (and hide other profiles' ones). */
     function syncCustom() {

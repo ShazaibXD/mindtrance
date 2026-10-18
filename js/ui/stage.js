@@ -38,7 +38,7 @@
   function diagnosisCard(session) {
     const d = session.diagnosis;
     const eff = MT.diagnose.effectiveOutcome(d);
-    const cat = MT.diagnose.OUTCOMES[eff];
+    const cat = MT.diagnose.outcomeMeta(eff);
     const cls = ui.outcomeCls(eff);
     const top = d.candidates && d.candidates[session.probeIndex || 0];
     const concept = top ? conceptOf(session, top.id) : null;
@@ -46,7 +46,7 @@
     const working = session.attempt && session.attempt.working.trim();
     return '<div class="card stack" style="--gap-y:12px"><div class="row between"><h3 id="stage-title" tabindex="-1">Diagnosis</h3><span class="badge ' + cls + '"><span class="dot"></span>' + esc(cat.label) + '</span></div>'
       + '<p class="muted">' + esc(cat.blurb) + '</p>'
-      + (eff !== d.category ? '<p class="small">Leading hypothesis so far: <strong>' + esc(MT.diagnose.OUTCOMES[d.category].label) + '</strong>.</p>' : '')
+      + (eff !== d.category ? '<p class="small">Leading hypothesis so far: <strong>' + esc(MT.diagnose.outcomeMeta(d.category).label) + '</strong>.</p>' : '')
       + evidenceBlock(d)
       + '<div><p class="label">Evidence from your work</p><ul class="steps">' + d.evidence.map((e) => '<li>' + fmt(e) + '</li>').join('') + '</ul>'
       + (working ? '<details><summary class="small muted">Your working as submitted</summary><pre class="quote">' + esc(session.attempt.working) + '</pre></details>' : '<p class="hint">No working was submitted. Showing your steps gives the diagnosis much stronger evidence.</p>') + '</div>'

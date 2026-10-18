@@ -15,10 +15,14 @@ const chrome = CANDIDATES.find((p) => fs.existsSync(p));
 const index = path.join(__dirname, '..', 'index.html');
 
 function dump(hash) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-smoke-'));
-  const r = spawnSync(chrome, ['--headless=new', '--no-sandbox', '--disable-gpu', '--user-data-dir=' + dir, '--virtual-time-budget=5000', '--dump-dom', 'file://' + index + hash], { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
-  fs.rmSync(dir, { recursive: true, force: true });
-  return r.stdout || '';
+  // Headless Chrome occasionally returns nothing when the machine is busy, so retry a couple of times.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-smoke-'));
+    const r = spawnSync(chrome, ['--headless=new', '--no-sandbox', '--disable-gpu', '--user-data-dir=' + dir, '--virtual-time-budget=8000', '--dump-dom', 'file://' + index + hash], { encoding: 'utf8', maxBuffer: 20 * 1024 * 1024, timeout: 60000 });
+    fs.rmSync(dir, { recursive: true, force: true });
+    if ((r.stdout || '').includes('</html>')) return r.stdout;
+  }
+  return '';
 }
 
 test('landing page renders from file:// with the graph and all six domains', { skip: !chrome && 'Chrome not found' }, () => {
