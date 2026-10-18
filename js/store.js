@@ -130,9 +130,13 @@
       if (!c) throw new Error('Unknown concept ' + trackId + ':' + conceptId);
       return c.prior;
     }
+    /* The stored record, with forgetting applied up to now (spec 11.1): the estimate drifts back toward the prior. */
     function record(trackId, conceptId) {
       const r = data().mastery[mkey(trackId, conceptId)];
-      return r || { p: priorOf(trackId, conceptId), obs: 0, fails: 0, learned: 0, updatedAt: null };
+      const prior = priorOf(trackId, conceptId);
+      if (!r) return { p: prior, stored: prior, prior, obs: 0, fails: 0, learned: 0, updatedAt: null, lambda: 7, W: 0, lastVerifiedAt: null };
+      const dt = r.updatedAt ? (now() - r.updatedAt) / 86400000 : 0;
+      return Object.assign({ lambda: 7, W: 0, lastVerifiedAt: null }, r, { stored: r.p, prior, p: MT.bkt.decay(r.p, prior, dt, r.lambda || 7) });
     }
     const p = (trackId, conceptId) => record(trackId, conceptId).p;
     function masteryMap(trackId) {
@@ -153,6 +157,7 @@
     function observe(trackId, conceptId, correct, metaIn) {
       const { bkt: bktParams, ...meta } = metaIn || {};
       const rec = Object.assign({}, record(trackId, conceptId));
+      delete rec.stored; delete rec.prior;
       const r = MT.bkt.observe(rec.p, correct, bktParams);
       rec.p = r.after;
       rec.obs += 1;
@@ -165,10 +170,12 @@
     }
 
     /* A recovery intervention: the only place a learning transition is applied. */
-    function learn(trackId, conceptId, meta) {
+    function learn(trackId, conceptId, metaIn) {
+      const { bkt: bktParams, ...meta } = metaIn || {};
       const rec = Object.assign({}, record(trackId, conceptId));
+      delete rec.stored; delete rec.prior;
       const before = rec.p;
-      rec.p = MT.bkt.learn(before);
+      rec.p = MT.bkt.learn(before, bktParams);
       rec.learned += 1;
       rec.updatedAt = now();
       data().mastery[mkey(trackId, conceptId)] = rec;
@@ -177,34 +184,76 @@
       return { before, after: rec.p, event: ev };
     }
 
+    /* Evidence-based status. A starting assumption is never shown as mastery: that needs answers on record. */
     function conceptState(trackId, conceptId) {
       const rec = record(trackId, conceptId);
-      const base = MT.bkt.status(rec.p);
-      let status = base;
-      if (base === 'CONFIRMED_GAP' && rec.fails === 0) status = 'NEEDS_VERIFICATION'; // low prior alone is not evidence
-      return { p: rec.p, obs: rec.obs, fails: rec.fails, status };
+      let status;
+      if (rec.obs === 0 && rec.learned === 0) status = 'NOT_ASSESSED';
+      else {
+        status = MT.bkt.status(rec.p);
+        if (status === 'CONFIRMED_GAP' && rec.fails === 0) status = 'NEEDS_VERIFICATION';
+        if (status === 'MASTERED' && !(rec.obs >= 2 || (rec.learned > 0 && rec.obs >= 1))) status = 'NEEDS_VERIFICATION'; // provisional needs at least two observations
+      }
+      return { p: rec.p, obs: rec.obs, fails: rec.fails, uncertainty: 1 / (1 + (rec.W || 0)), status };
     }
+    const isGap = (trackId, conceptId) => conceptState(trackId, conceptId).status === 'CONFIRMED_GAP';
 
-    /* Display state of every concept in a track, including suspected and blocked. */
+    /* Display state of every concept in a track: evidence status plus suspected, learning, ready and blocked overlays. */
     function graphState(trackId) {
       const track = MT.data.track(trackId);
       const gr = MT.graph.build(track);
       const out = {};
-      for (const c of track.concepts) out[c.id] = conceptState(trackId, c.id);
+      const base = {};
+      for (const c of track.concepts) { out[c.id] = conceptState(trackId, c.id); base[c.id] = out[c.id].status; }
       const suspected = new Set();
+      const learning = new Set();
+      const ready = new Set();
       for (const s of Object.values(data().sessions)) {
-        if (s.trackId !== trackId) continue;
+        if (s.trackId !== trackId || s.closed) continue;
         if ((s.state === 'ERROR_CLASSIFIED' || s.state === 'PROBE_REQUIRED') && s.diagnosis) {
           for (const c of s.diagnosis.candidates.slice(s.probeIndex || 0, (s.probeIndex || 0) + 1)) suspected.add(c.id);
         }
+        if (s.gap && ['RECOVERY_REQUIRED', 'RECOVERY_IN_PROGRESS'].includes(s.state)) learning.add(s.gap.conceptId);
+        if (s.gap && s.state === 'VERIFICATION_REQUIRED') ready.add(s.gap.conceptId);
       }
-      for (const id of suspected) if (out[id] && out[id].status !== 'CONFIRMED_GAP' && out[id].status !== 'MASTERED') out[id].status = 'SUSPECTED_GAP';
+      for (const id of suspected) if (out[id] && !['CONFIRMED_GAP', 'MASTERED'].includes(out[id].status)) out[id].status = 'SUSPECTED_GAP';
+      for (const id of learning) if (out[id] && out[id].status !== 'MASTERED') out[id].status = 'LEARNING_IN_PROGRESS';
+      for (const id of ready) if (out[id] && out[id].status !== 'MASTERED') out[id].status = 'READY_FOR_REASSESSMENT';
       for (const c of track.concepts) {
-        if (out[c.id].status === 'MASTERED' || out[c.id].status === 'CONFIRMED_GAP') continue;
-        const blockers = MT.graph.blockedBy(gr, c.id, (aid) => out[aid].status === 'CONFIRMED_GAP');
+        if (['MASTERED', 'CONFIRMED_GAP', 'LEARNING_IN_PROGRESS', 'READY_FOR_REASSESSMENT'].includes(out[c.id].status)) continue;
+        const blockers = MT.graph.blockedBy(gr, c.id, (aid) => base[aid] === 'CONFIRMED_GAP');
         if (blockers.length) { out[c.id].status = 'BLOCKED'; out[c.id].blockedBy = blockers; }
       }
       return out;
+    }
+
+    /* Open-ended work: evidence-weighted rubric accumulator (spec 11.2). The estimate becomes the accumulated mean. */
+    function rubric(trackId, conceptId, R, w, metaIn) {
+      const meta = metaIn || {};
+      const rec = Object.assign({}, record(trackId, conceptId));
+      delete rec.stored; delete rec.prior;
+      const before = rec.p;
+      const u = MT.bkt.rubricUpdate(rec.W > 0 ? { M: rec.p, W: rec.W } : null, R, w);
+      rec.p = u.M; rec.W = u.W; rec.obs += 1; if (R < 0.5) rec.lowScores = (rec.lowScores || 0) + 1; rec.updatedAt = now(); // a weak essay is softer evidence than a failed probe, so it does not count as a confirmed miss
+      data().mastery[mkey(trackId, conceptId)] = rec;
+      const ev = addEvent(Object.assign({ type: 'RUBRIC', trackId, conceptId, correct: R >= 0.5, score: R, weight: w, before, after: rec.p, uncertainty: u.U }, meta));
+      commit();
+      return { before, after: rec.p, uncertainty: u.U, event: ev };
+    }
+
+    /* A verified recovery or review: schedule the next spaced review and double the stability half-life on a spaced success. */
+    function noteVerified(trackId, conceptId) {
+      const d = data();
+      const key = mkey(trackId, conceptId);
+      const rec = Object.assign({}, record(trackId, conceptId));
+      delete rec.stored; delete rec.prior;
+      const spaced = rec.lastVerifiedAt && now() - rec.lastVerifiedAt >= 86400000;
+      if (spaced) rec.lambda = Math.min(56, (rec.lambda || 7) * 2);
+      rec.lastVerifiedAt = now();
+      d.mastery[key] = rec;
+      d.reviews[key] = { trackId, conceptId, reason: 'spaced', dueAt: now() + (rec.lambda || 7) * 86400000 };
+      commit();
+      return { lambda: rec.lambda, dueAt: d.reviews[key].dueAt };
     }
 
     /* ---------- sessions ---------- */
@@ -269,7 +318,7 @@
     syncCustom();
 
     return {
-      persistent, now, scheduleReview, dueReviews, clearReview, addCustomTrack, removeCustomTrack, customTracks: () => (profile() ? Object.values(data().customs) : []),
+      persistent, now, rubric, noteVerified, isGap, scheduleReview, dueReviews, clearReview, addCustomTrack, removeCustomTrack, customTracks: () => (profile() ? Object.values(data().customs) : []),
       subscribe: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
       profiles: () => Object.values(root.profiles), profile, validateName, signUp, signIn, signOut, deleteProfile, renameProfile,
       data, p, record, masteryMap, observe, learn, conceptState, graphState, addEvent, commit,

@@ -38,7 +38,7 @@
       + '<div class="row between"><h2 id="det-h" class="h3">' + esc(c.name) + '</h2>' + ui.statusBadge(st.status) + '</div>'
       + '<p class="muted">' + fmt(c.desc) + '</p>'
       + '<div><div class="row between small"><span class="label">Mastery estimate</span><span class="mono">' + ui.f2(st.p) + '</span></div>' + ui.meter(st.p, meta.cls)
-      + '<p class="hint">' + esc(meta.help) + ' ' + (rec.obs ? rec.obs + ' observation' + (rec.obs > 1 ? 's' : '') + ', ' + rec.fails + ' missed.' : 'No evidence yet: this is a starting assumption.') + '</p></div>'
+      + '<p class="hint">' + esc(meta.help) + ' ' + (rec.obs ? rec.obs + ' observation' + (rec.obs > 1 ? 's' : '') + ', ' + rec.fails + ' missed.' : 'No evidence yet: this is a starting assumption.') + (rec.W > 0 ? ' Rubric-scored, uncertainty ' + ui.f2(1 / (1 + rec.W)) + ' (it shrinks as evidence builds).' : '') + '</p></div>'
       + action
       + '<div><p class="label">Prerequisites</p>' + (parents.length ? '<ul class="list small">' + parents.map((p) => row(p.id, p.why, p.weight, 'up', p)).join('') + '</ul>' : '<p class="muted small">Foundational: nothing upstream.</p>') + '</div>'
       + '<div><p class="label">Needed for</p>' + (kids.length ? '<ul class="list small">' + kids.map((k) => row(k.id, k.why, k.weight, 'down', k)).join('') + '</ul>' : '<p class="muted small">This is the target concept of the track.</p>') + '</div>'

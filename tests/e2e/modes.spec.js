@@ -57,7 +57,7 @@ test('a short right answer to an open question needs a reasoning check before it
   await page.getByLabel('How did you get there?').fill('The treaty forced reparations that wrecked the economy, and that resentment helped the Nazis and Hitler.');
   await page.getByRole('button', { name: 'Submit my reasoning' }).click();
   await expect(page.getByRole('heading', { name: 'Correct' })).toBeVisible();
-  expect((await events(page)).filter((t) => t === 'OBSERVATION').length).toBeGreaterThan(0);
+  expect((await events(page)).filter((t) => t === 'RUBRIC').length).toBeGreaterThan(0);
 });
 
 test('an uncertain dependency is drawn dotted and explained on the map', async ({ page }) => {

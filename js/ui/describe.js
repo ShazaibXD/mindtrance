@@ -23,6 +23,7 @@
         const what = { probe: 'probe', practice: 'practice question', verification: 'verification problem', 'verification-transfer': 'verification (target concept)', attempt: 'attempt' }[ev.source] || 'answer';
         return { text: (ev.correct ? 'Passed' : 'Missed') + ' a ' + what + ' on ' + c + d(ev.before, ev.after), tone: ev.correct ? 'mastered' : 'gap' };
       }
+      case 'RUBRIC': return { text: 'Open-ended answer scored ' + ui.f2(ev.score) + ' on ' + c + d(ev.before, ev.after), tone: ev.correct ? 'mastered' : 'verify' };
       case 'LEARNING': return { text: 'Completed a lesson on ' + c + d(ev.before, ev.after), tone: 'sage' };
       case 'RECOVERY_STARTED': return { text: 'Started recovery for ' + c, tone: 'sage' };
       case 'MASTERY_VERIFIED': return { text: 'Verified mastery of ' + c + d(ev.before, ev.after), tone: 'mastered' };

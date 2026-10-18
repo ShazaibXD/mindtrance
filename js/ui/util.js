@@ -41,11 +41,14 @@
   const icon = (name, size) => '<svg aria-hidden="true" width="' + (size || 18) + '" height="' + (size || 18) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + (ICONS[name] || '') + '"/></svg>';
 
   const STATUS = {
-    MASTERED: { label: 'Mastered', short: 'Mastered', cls: 'mastered', glyph: '✓', help: 'Mastery estimate is 0.80 or higher.' },
-    NEEDS_VERIFICATION: { label: 'Needs verification', short: 'Unverified', cls: 'verify', glyph: '~', help: 'Not enough evidence yet either way.' },
-    SUSPECTED_GAP: { label: 'Suspected gap', short: 'Suspected', cls: 'suspect', glyph: '?', help: 'A diagnosis points here but no probe has confirmed it.' },
-    CONFIRMED_GAP: { label: 'Confirmed gap', short: 'Confirmed gap', cls: 'gap', glyph: '!', help: 'A probe failed and the estimate is below 0.45.' },
-    BLOCKED: { label: 'Blocked by prerequisite', short: 'Blocked', cls: 'blocked', glyph: '–', help: 'An upstream concept is a confirmed gap.' },
+    NOT_ASSESSED: { label: 'Not assessed yet', short: 'Not assessed', cls: '', glyph: '\u00b7', help: 'No answers on record yet. The number shown is only a starting assumption.' },
+    MASTERED: { label: 'Provisionally mastered', short: 'Mastered', cls: 'mastered', glyph: '\u2713', help: 'Estimate is 0.80 or higher with at least two observations. Re-checked as you answer more.' },
+    NEEDS_VERIFICATION: { label: 'Needs verification', short: 'Unverified', cls: 'verify', glyph: '~', help: 'Some evidence, not enough either way.' },
+    SUSPECTED_GAP: { label: 'Possible gap', short: 'Possible gap', cls: 'suspect', glyph: '?', help: 'A diagnosis points here but nothing has confirmed it.' },
+    CONFIRMED_GAP: { label: 'Confirmed gap', short: 'Confirmed gap', cls: 'gap', glyph: '!', help: 'A probe or your own working showed it, and the estimate is below 0.45.' },
+    LEARNING_IN_PROGRESS: { label: 'Learning in progress', short: 'Learning', cls: 'sage', glyph: '\u2191', help: 'You are working through the recovery lesson and practice.' },
+    READY_FOR_REASSESSMENT: { label: 'Ready to reassess', short: 'Reassess', cls: 'sage', glyph: '\u21bb', help: 'Recovery is done. A fresh question will show whether it transferred.' },
+    BLOCKED: { label: 'Blocked by prerequisite', short: 'Blocked', cls: 'blocked', glyph: '\u2013', help: 'An upstream concept is a confirmed gap.' },
   };
 
   const KIND_CLS = { correct: 'mastered', unverified: 'verify', gap: 'gap', slip: 'verify', partial: 'verify', language: 'verify', ambiguous: 'suspect' };

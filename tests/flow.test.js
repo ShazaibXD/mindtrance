@@ -191,7 +191,7 @@ test('a different kind of error during verification does not penalise the recove
   const vp = F.verificationProblem(s);
   const v = F.submitVerification(store, s.id, vp.answer.value * 1.03 + ' A', '');
   assert.equal(v.outcome, 'OTHER_ERROR');
-  assert.equal(store.p(T, 'turns_ratio'), before);
+  assert.ok(Math.abs(store.p(T, 'turns_ratio') - before) < 1e-6);
   assert.equal(s.state, 'VERIFICATION_REQUIRED');
 });
 
@@ -272,4 +272,68 @@ test('exam focus steers the recommended problem', () => {
   assert.equal(F.nextAction(store).trackId, 'gate-subnet');
   store.updateSettings({ examFocus: '' });
   assert.equal(F.nextAction(store).trackId, 'eee-transformers');
+});
+
+test('open-ended attempts use the rubric track for the target concept, not a right-or-wrong observation', () => {
+  const store = fresh();
+  const id = store.addCustomTrack({ question: MT.custom.FIXTURE.question, spec: MT.custom.FIXTURE.spec, source: 'fixture' });
+  const s = F.startSession(store, id, 'q');
+  const answer = 'The treaty was unfair to Germany.';
+  F.submitAttempt(store, s.id, answer, '', { judgement: MT.custom.fixtureJudge(answer) });
+  const rub = store.events().filter((e) => e.type === 'RUBRIC');
+  assert.equal(rub.length, 1);
+  assert.equal(rub[0].conceptId, 'versailles_wwii');
+  assert.equal(rub[0].correct, false);
+  assert.ok(store.record(id, 'versailles_wwii').p < 0.45);
+  assert.ok(store.record(id, 'versailles_wwii').W > 0);
+  const strong = 'The treaty demanded reparations that wrecked the economy, feeding resentment that the Nazis used.';
+  F.tryAgain(store, s.id);
+  F.submitAttempt(store, s.id, strong, '', { judgement: MT.custom.fixtureJudge(strong) });
+  assert.ok(store.record(id, 'versailles_wwii').p > rub[0].after, 'a better answer raises the accumulated estimate');
+});
+
+test('the recovery lesson applies the spec transition of 0.30 and verified mastery schedules a spaced review', () => {
+  const store = fresh();
+  const s = F.startSession(store, T, P);
+  F.submitAttempt(store, s.id, '200 A', 'V2 = V1 x N1/N2 = 240 x 10');
+  F.beginRecovery(store, s.id);
+  const before = store.p(T, 'turns_ratio');
+  const r = F.completeLesson(store, s.id);
+  assert.ok(Math.abs(r.learn.after - (before + (1 - before) * 0.30)) < 1e-6);
+  F.answerPractice(store, s.id, F.currentPractice(s).concept.practice.correct);
+  F.startVerification(store, s.id);
+  let v = F.submitVerification(store, s.id, F.verificationProblem(s).answer.display, '');
+  let guard = 0;
+  while (v.outcome === 'NEEDS_MORE' && guard++ < 4) v = F.submitVerification(store, s.id, F.verificationProblem(s).answer.display, '');
+  assert.equal(v.outcome, 'VERIFIED');
+  const review = store.data().reviews[T + ':turns_ratio'];
+  assert.ok(review && review.reason === 'spaced');
+  assert.ok(review.dueAt > store.now() + 6 * 86400000, 'about a week out');
+  assert.equal(s.result.reviewDueAt, review.dueAt);
+});
+
+test('typed answers use the low guess rate and multiple choice the one-in-three rate', () => {
+  const store = fresh();
+  assert.equal(F.ctxParams(store, 'attempt', { answer: { kind: 'number' } }).pGuess, 0.05);
+  assert.ok(Math.abs(F.ctxParams(store, 'probe').pGuess - 1 / 3) < 1e-9);
+  assert.ok(Math.abs(F.ctxParams(store, 'verification-choice').pGuess - 1 / 3) < 1e-9);
+  const s = F.startSession(store, T, P);
+  F.submitAttempt(store, s.id, '200 A', '');
+  const pr = F.currentProbe(s);
+  const before = store.p(T, pr.concept.id);
+  F.answerProbe(store, s.id, pr.concept.probe.correct);
+  const expected = MT.bkt.observe(before, true, { pGuess: 1 / 3 }).after;
+  assert.ok(Math.abs(store.p(T, pr.concept.id) - expected) < 1e-4);
+});
+
+test('a review that has come due becomes the recommended next action', () => {
+  let t = 1_000_000_000_000;
+  const store = MT.store.create({ storage: mem(), now: () => t });
+  store.signUp('Asha');
+  store.noteVerified(T, 'turns_ratio');
+  assert.notEqual(F.nextAction(store).kind, 'review');
+  t += 8 * 86400000;
+  const a = F.nextAction(store);
+  assert.equal(a.kind, 'review');
+  assert.equal(a.conceptId, 'turns_ratio');
 });

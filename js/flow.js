@@ -41,9 +41,9 @@
   function lockedBy(store, trackId, problemId) {
     const track = MT.data.track(trackId);
     const def = track.problems.find((p) => p.id === problemId) || track.problems[0];
-    const gs = store.graphState(trackId);
     const gr = MT.graph.build(track);
-    return MT.graph.blockedBy(gr, def.target, (id) => gs[id].status === 'CONFIRMED_GAP');
+    // The underlying gap, not the display status: the lock must hold while the student is mid-recovery.
+    return MT.graph.blockedBy(gr, def.target, (id) => store.isGap(trackId, id));
   }
 
   function startSession(store, trackId, problemId) {
@@ -100,6 +100,7 @@
       if (j.isCorrect) res = { engine: j.engine, category: 'CORRECT_UNDERSTANDING', confidence: j.confidence, evidence: j.evidence, matchedBy: j.matchedBy || 'ai', hintConcept: null, candidates: [] };
       else res = applyOverride(track, res, j, mastery);
       res.judged = true;
+      attachRubric(res, j);
     }
 
     const override = opts && opts.override;
@@ -121,6 +122,12 @@
     return settle(store, s, res, track, problem, now, opts && opts.mode);
   }
 
+  /* Open-ended work is scored on a rubric, not as a right-or-wrong observation (spec 11.2). */
+  function attachRubric(res, j) {
+    res.rubricScore = typeof j.rubricScore === 'number' ? j.rubricScore : (j.isCorrect ? 0.85 : 0.35);
+    res.rubricWeight = 0.5 + 0.5 * Math.min(1, Math.max(0, j.confidence || 0));
+  }
+
   /* Everything that happens once an attempt has a classification: mastery, routing, probes. */
   function settle(store, s, res, track, problem, now, mode) {
     if (res.category === 'CORRECT_UNDERSTANDING') {
@@ -128,7 +135,9 @@
       s.diagnosis = res;
       s.result = { ...(s.result || {}), solved: true };
       logEvent(store, s, 'ATTEMPT', { category: 'CORRECT_UNDERSTANDING', correct: true, mode });
-      const o = store.observe(s.trackId, track.target, true, { sessionId: s.id, problemId: s.problemId, source: 'attempt' });
+      const o = res.rubricScore != null
+        ? store.rubric(s.trackId, track.target, res.rubricScore, res.rubricWeight, { sessionId: s.id, problemId: s.problemId, source: 'attempt' })
+        : store.observe(s.trackId, track.target, true, { sessionId: s.id, problemId: s.problemId, source: 'attempt', bkt: ctxParams(store, 'attempt', problem) });
       s.result.targetBefore = o.before;
       s.result.targetAfter = o.after;
       store.touch(s);
@@ -139,6 +148,10 @@
     s.diagnosis = res;
     s.probeIndex = 0;
     logEvent(store, s, 'ATTEMPT', { category: res.category, tier: res.tier, correct: false, conceptId: res.hintConcept || null, matchedBy: res.matchedBy, mode });
+
+    if (res.rubricScore != null && ['gap', 'partial', 'ambiguous'].includes(MT.diagnose.kindOf(res.category))) {
+      store.rubric(s.trackId, track.target, res.rubricScore, res.rubricWeight, { sessionId: s.id, problemId: s.problemId, source: 'attempt' });
+    }
 
     let candidates = res.candidates || [];
     if (res.category === 'CALCULATION_OR_UNIT_ERROR' && res.hintConcept) {
@@ -271,7 +284,7 @@
   function completeLesson(store, sessionId) {
     const s = store.getSession(sessionId);
     if (!s || s.state !== 'RECOVERY_IN_PROGRESS' || s.recovery.step !== 'lesson') return { ok: false, error: 'No lesson in progress.' };
-    const r = store.learn(s.trackId, s.recovery.conceptId, { sessionId: s.id, source: 'lesson' });
+    const r = store.learn(s.trackId, s.recovery.conceptId, { sessionId: s.id, source: 'lesson', bkt: { pTransit: 0.30 } });
     s.recovery.learned = true;
     s.recovery.step = 'practice';
     s.recovery.afterLesson = r.after;
@@ -349,6 +362,8 @@
         MT.machine.transition(s, 'MASTERY_VERIFIED', 'verified', now);
         s.result = Object.assign(s.result || {}, { verified: true, conceptId: gapId, before: s.verification.pEntry, after: o.after });
         logEvent(store, s, 'MASTERY_VERIFIED', { conceptId: gapId, before, after: o.after });
+        const rev = store.noteVerified(s.trackId, gapId);
+        s.result.reviewDueAt = rev.dueAt;
         store.touch(s);
         return { ok: true, session: s, outcome: 'VERIFIED', diagnosis: res, before, after: o.after };
       }
@@ -483,6 +498,7 @@
       res = applyOverride(track, base, judgement, mastery);
       res.judged = true;
     }
+    attachRubric(res, judgement);
     return settle(store, s, res, track, problem, store.now(), 'reasoning');
   }
 
@@ -497,6 +513,8 @@
       const gap = track.concepts.filter((c) => gs[c.id].status === 'CONFIRMED_GAP').sort((a, b) => gs[a.id].p - gs[b.id].p)[0];
       if (gap) return { kind: 'recover', trackId: track.id, conceptId: gap.id };
     }
+    const due = store.dueReviews()[0];
+    if (due) return { kind: 'review', trackId: due.trackId, conceptId: due.conceptId, reason: due.reason };
     const tried = new Set(store.sessionList().map((s) => s.trackId + ':' + s.problemId));
     for (const track of ordered) {
       for (const p of track.problems) if (!tried.has(track.id + ':' + p.id)) return { kind: 'try', trackId: track.id, problemId: p.id };

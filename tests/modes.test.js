@@ -90,7 +90,7 @@ test('a short right answer to an open question asks how the student got there be
   const done = F.submitReasoning(store, s.id, reasoning, MT.custom.fixtureJudge(answer + ' ' + reasoning));
   assert.ok(done.ok);
   assert.equal(s.state, 'ATTEMPT_CORRECT');
-  assert.ok(store.events().some((e) => e.type === 'OBSERVATION' && e.correct));
+  assert.ok(store.events().some((e) => e.type === 'RUBRIC' && e.correct), 'open-ended work is scored on the rubric track');
   assert.equal(s.attempt.working, reasoning);
 });
 

@@ -194,15 +194,15 @@
     const engine = 'demo-rubric';
     const label = 'Demo rubric (keyword rules, not AI): ';
     if (has('reparation') && has('resent', 'humiliat', 'nazi', 'hitler', 'nationalis', 'extrem', 'depression', 'inflation')) {
-      return { engine, matchedBy: 'rubric', isCorrect: true, category: 'CORRECT_UNDERSTANDING', confidence: 0.8, hintConcept: null, evidence: [label + 'your answer links reparations to resentment or extremist politics.'] };
+      return { engine, matchedBy: 'rubric', isCorrect: true, rubricScore: 0.85, category: 'CORRECT_UNDERSTANDING', confidence: 0.8, hintConcept: null, evidence: [label + 'your answer links reparations to resentment or extremist politics.'] };
     }
     if (has('reparation', 'war guilt', 'article 231', 'ruhr')) {
-      return { engine, matchedBy: 'rubric', isCorrect: false, category: 'PREREQUISITE_GAP', confidence: 0.55, hintConcept: 'reparations', evidence: [label + 'your answer mentions the terms but does not connect them to economic collapse and political anger.'] };
+      return { engine, matchedBy: 'rubric', isCorrect: false, rubricScore: 0.5, category: 'PREREQUISITE_GAP', confidence: 0.55, hintConcept: 'reparations', evidence: [label + 'your answer mentions the terms but does not connect them to economic collapse and political anger.'] };
     }
     if (has('treaty', 'versailles', 'germany', 'war')) {
-      return { engine, matchedBy: 'rubric', isCorrect: false, category: 'PREREQUISITE_GAP', confidence: 0.4, hintConcept: 'ww1_settlement', evidence: [label + 'your answer names the treaty but not what it required of Germany, so the diagnosis is uncertain.'] };
+      return { engine, matchedBy: 'rubric', isCorrect: false, rubricScore: 0.35, category: 'PREREQUISITE_GAP', confidence: 0.4, hintConcept: 'ww1_settlement', evidence: [label + 'your answer names the treaty but not what it required of Germany, so the diagnosis is uncertain.'] };
     }
-    return { engine, matchedBy: 'rubric', isCorrect: false, category: 'PREREQUISITE_GAP', confidence: 0.25, hintConcept: 'causal_reasoning', evidence: [label + 'the answer does not yet make a causal claim, so it is not clear which concept is missing.'] };
+    return { engine, matchedBy: 'rubric', isCorrect: false, rubricScore: 0.15, category: 'PREREQUISITE_GAP', confidence: 0.25, hintConcept: 'causal_reasoning', evidence: [label + 'the answer does not yet make a causal claim, so it is not clear which concept is missing.'] };
   }
 
   MT.custom = { precheck, QUESTION_TYPES, validateSpec, buildTrack, makeId, shorten, FIXTURE: { question: FIXTURE_QUESTION, spec: FIXTURE_SPEC, source: 'fixture' }, fixtureJudge };

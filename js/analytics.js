@@ -10,7 +10,7 @@
     const cur = new Map();
     const out = [];
     for (const e of events) {
-      if (e.type !== 'OBSERVATION' && e.type !== 'LEARNING') continue;
+      if (e.type !== 'OBSERVATION' && e.type !== 'LEARNING' && e.type !== 'RUBRIC') continue;
       cur.set(key(e), e.after);
       let sum = 0;
       for (const v of cur.values()) sum += v;

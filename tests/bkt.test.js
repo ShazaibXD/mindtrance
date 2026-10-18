@@ -70,3 +70,36 @@ test('invalid parameters are rejected', () => {
   assert.throws(() => bkt.status(0.5, { gapBelow: 0.9, masteredAt: 0.8 }), RangeError);
   assert.throws(() => bkt.observe(NaN, true), RangeError);
 });
+
+test('learn accepts a context-specific transition probability', () => {
+  near(bkt.learn(0.2, { pTransit: 0.30 }), 0.2 + 0.8 * 0.3);
+  near(bkt.learn(0.2, { pTransit: 0.10 }), 0.2 + 0.8 * 0.1);
+});
+
+test('forgetting pulls the estimate toward the prior with the stated half-life form', () => {
+  near(bkt.decay(0.9, 0.5, 0, 7), 0.9);
+  near(bkt.decay(0.9, 0.5, 7, 7), 0.5 + 0.4 * Math.exp(-1));
+  assert.ok(bkt.decay(0.9, 0.5, 70, 7) < 0.501);
+  assert.ok(bkt.decay(0.1, 0.5, 7, 7) > 0.1, 'a low estimate drifts back up toward the prior too');
+  assert.ok(bkt.decay(0.9, 0.5, 7, 28) > bkt.decay(0.9, 0.5, 7, 7), 'a longer half-life forgets more slowly');
+  near(bkt.decay(0.9, 0.5, -3, 7), 0.9);
+});
+
+test('rubric accumulator follows M = (g W M + w R) / (g W + w) and tracks uncertainty', () => {
+  const a = bkt.rubricUpdate(null, 0.8, 1);
+  near(a.M, 0.8); near(a.W, 1); near(a.U, 0.5);
+  const b = bkt.rubricUpdate(a, 0.4, 1);
+  const W = 0.85 * 1 + 1;
+  near(b.M, (0.85 * 1 * 0.8 + 1 * 0.4) / W); near(b.W, W);
+  assert.ok(b.U < a.U, 'more evidence means less uncertainty');
+  let s = bkt.rubricUpdate(null, 0.2, 0.5);
+  for (let i = 0; i < 30; i++) s = bkt.rubricUpdate(s, 0.9, 1);
+  assert.ok(s.M > 0.88, 'recent evidence dominates through recency decay');
+});
+
+test('rubric inputs are validated', () => {
+  assert.throws(() => bkt.rubricUpdate(null, 1.2, 1), RangeError);
+  assert.throws(() => bkt.rubricUpdate(null, -0.1, 1), RangeError);
+  assert.throws(() => bkt.rubricUpdate(null, 0.5, 0.2), RangeError);
+  assert.throws(() => bkt.rubricUpdate(null, NaN, 1), RangeError);
+});

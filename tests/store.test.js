@@ -27,7 +27,7 @@ test('sign out hides data and sign in restores it; profiles are isolated', () =>
   const b = s.signUp('Bilal').id;
   assert.equal(s.p(T, 'turns_ratio'), 0.55, 'a new profile starts from priors');
   s.signIn(a);
-  assert.equal(s.p(T, 'turns_ratio'), pa);
+  assert.ok(Math.abs(s.p(T, 'turns_ratio') - pa) < 1e-6);
   assert.equal(s.signIn('nope').ok, false);
   assert.ok(b);
 });
@@ -40,7 +40,7 @@ test('data persists across store instances (page refresh)', () => {
   const after = s1.p(T, 'turns_ratio');
   const s2 = mk(storage);
   assert.equal(s2.profile().name, 'Asha');
-  assert.equal(s2.p(T, 'turns_ratio'), after);
+  assert.ok(Math.abs(s2.p(T, 'turns_ratio') - after) < 1e-6);
   assert.equal(s2.events().length, 1);
 });
 
@@ -66,7 +66,7 @@ test('observe records evidence; learn is a separate event', () => {
 
 test('a low prior alone is not a confirmed gap; a failed observation is', () => {
   const s = mk(); s.signUp('Asha');
-  assert.equal(s.conceptState(T, 'turns_ratio').status, 'NEEDS_VERIFICATION');
+  assert.equal(s.conceptState(T, 'turns_ratio').status, 'NOT_ASSESSED');
   s.observe(T, 'turns_ratio', false, {});
   assert.equal(s.conceptState(T, 'turns_ratio').status, 'CONFIRMED_GAP');
 });
@@ -78,7 +78,7 @@ test('graphState blocks dependents of a confirmed gap and marks suspects', () =>
   assert.equal(gs.turns_ratio.status, 'CONFIRMED_GAP');
   assert.equal(gs.ideal_tx.status, 'BLOCKED');
   assert.ok(gs.ideal_tx.blockedBy.includes('turns_ratio'));
-  assert.equal(gs.ohms_law.status, 'MASTERED');
+  assert.equal(gs.ohms_law.status, 'NOT_ASSESSED', 'a starting assumption is never shown as mastery');
   const sess = s.newSession({ trackId: T, problemId: 'tx-secondary-current', state: 'PROBE_REQUIRED', diagnosis: { candidates: [{ id: 'unit_conv' }] }, probeIndex: 0 });
   assert.ok(sess.id);
   assert.equal(s.graphState(T).unit_conv.status, 'SUSPECTED_GAP');
@@ -139,4 +139,77 @@ test('settings from older saves are merged over current defaults', () => {
   assert.equal(s2.settings().showSolution, true);
   s2.updateSettings({ showSolution: false });
   assert.equal(s2.settings().showSolution, false);
+});
+
+const DAY = 86400000;
+const clocked = (start) => { let t = start; const store = MT.store.create({ storage: mem(), now: () => t }); store.signUp('Asha'); return { store, advance: (days) => { t += days * DAY; } }; };
+
+test('forgetting: an estimate drifts back toward the prior as days pass, and recovers on reassessment', () => {
+  const { store, advance } = clocked(1_000_000_000_000);
+  store.observe(T, 'ohms_law', true, {}); store.observe(T, 'ohms_law', true, {});
+  const fresh = store.p(T, 'ohms_law');
+  advance(7);
+  const week = store.p(T, 'ohms_law');
+  advance(60);
+  const late = store.p(T, 'ohms_law');
+  assert.ok(week < fresh && late < week);
+  assert.ok(late > 0.8 - 1e-9 || Math.abs(late - 0.8) < 0.01, 'it converges on the prior (0.80), not to zero');
+  store.observe(T, 'turns_ratio', true, {});
+  const a = store.p(T, 'turns_ratio');
+  advance(14);
+  assert.ok(store.p(T, 'turns_ratio') < a);
+});
+
+test('a starting assumption is never shown as mastery; provisional mastery needs two observations', () => {
+  const s = mk(); s.signUp('Asha');
+  assert.equal(s.conceptState(T, 'ohms_law').status, 'NOT_ASSESSED');
+  s.observe(T, 'ohms_law', true, {});
+  assert.equal(s.conceptState(T, 'ohms_law').status, 'NEEDS_VERIFICATION', 'one correct answer is not yet enough');
+  s.observe(T, 'ohms_law', true, {});
+  assert.equal(s.conceptState(T, 'ohms_law').status, 'MASTERED');
+});
+
+test('recovery overlays: learning in progress, then ready to reassess, and the lock holds throughout', () => {
+  const s = mk(); s.signUp('Asha');
+  const sess = MT.flow.startSession(s, T, 'tx-secondary-current');
+  MT.flow.submitAttempt(s, sess.id, '200 A', 'V2 = V1 x N1/N2 = 240 x 10 = 2400 V');
+  assert.equal(s.graphState(T).turns_ratio.status, 'CONFIRMED_GAP');
+  MT.flow.beginRecovery(s, sess.id);
+  assert.equal(s.graphState(T).turns_ratio.status, 'LEARNING_IN_PROGRESS');
+  assert.ok(s.isGap(T, 'turns_ratio'), 'the underlying gap still counts');
+  assert.deepEqual(MT.flow.lockedBy(s, T, 'tx-secondary-current'), ['turns_ratio'], 'the original problem stays locked mid-recovery');
+  MT.flow.completeLesson(s, sess.id);
+  MT.flow.answerPractice(s, sess.id, MT.flow.currentPractice(sess).concept.practice.correct);
+  MT.flow.startVerification(s, sess.id);
+  assert.equal(s.graphState(T).turns_ratio.status, 'READY_FOR_REASSESSMENT');
+});
+
+test('rubric track: open-ended evidence accumulates with recency and reports uncertainty', () => {
+  const s = mk(); s.signUp('Asha');
+  const a = s.rubric(T, 'ideal_tx', 0.8, 1, {});
+  assert.ok(Math.abs(a.after - 0.8) < 1e-3);
+  const b = s.rubric(T, 'ideal_tx', 0.3, 1, {});
+  assert.ok(b.after < a.after && b.after > 0.3);
+  assert.ok(b.uncertainty < a.uncertainty);
+  assert.equal(s.record(T, 'ideal_tx').fails, 0, 'a low rubric score is not a confirmed miss');
+  assert.equal(s.record(T, 'ideal_tx').lowScores, 1);
+  assert.equal(s.events().filter((e) => e.type === 'RUBRIC').length, 2);
+});
+
+test('a verified concept gets a spaced review, and the stability half-life doubles on a spaced success', () => {
+  const { store, advance } = clocked(1_000_000_000_000);
+  const first = store.noteVerified(T, 'turns_ratio');
+  assert.equal(first.lambda, 7);
+  assert.equal(store.dueReviews().length, 0);
+  advance(8);
+  assert.equal(store.dueReviews().length, 1, 'due after the half-life');
+  const second = store.noteVerified(T, 'turns_ratio');
+  assert.equal(second.lambda, 14);
+  assert.equal(store.dueReviews().length, 0, 'scheduled again, further out');
+  store.noteVerified(T, 'turns_ratio');
+  assert.equal(store.record(T, 'turns_ratio').lambda, 14, 'an immediate repeat is not a spaced success');
+  advance(20); store.noteVerified(T, 'turns_ratio');
+  assert.equal(store.record(T, 'turns_ratio').lambda, 28);
+  store.clearReview(T, 'turns_ratio');
+  assert.equal(Object.keys(store.data().reviews).length, 0);
 });

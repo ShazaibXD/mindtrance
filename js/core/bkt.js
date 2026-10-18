@@ -59,6 +59,26 @@
     return clampP(L + (1 - L) * q.pTransit);
   }
 
+  /* Forgetting: pull the estimate back toward the prior with stability half-life lambda (days). */
+  function decay(p, p0, dtDays, lambdaDays) {
+    if (!(dtDays > 0)) return clampP(p);
+    const lam = lambdaDays > 0 ? lambdaDays : 7;
+    return clampP(p0 + (p - p0) * Math.exp(-dtDays / lam));
+  }
+
+  /* Track B: evidence-weighted rubric accumulator for open-ended work (spec 11.2).
+   * state = { M, W }. score R and weight w are in [0,1] / [0.5,1]. Returns the new state and an uncertainty U = 1/(1+W). */
+  const RUBRIC_GAMMA = 0.85;
+  function rubricUpdate(state, R, w) {
+    if (!(R >= 0 && R <= 1) || !Number.isFinite(R)) throw new RangeError('rubric score must be between 0 and 1');
+    if (!(w >= 0.5 && w <= 1) || !Number.isFinite(w)) throw new RangeError('rubric weight must be between 0.5 and 1');
+    const W0 = state && state.W > 0 ? state.W : 0;
+    const M0 = state && Number.isFinite(state.M) ? state.M : R;
+    const denom = RUBRIC_GAMMA * W0 + w;
+    const M = (RUBRIC_GAMMA * W0 * M0 + w * R) / denom;
+    return { M: clampP(M), W: denom, U: 1 / (1 + denom) };
+  }
+
   function status(p, params) {
     const q = validateParams(params);
     if (p >= q.masteredAt) return 'MASTERED';
@@ -66,6 +86,6 @@
     return 'CONFIRMED_GAP';
   }
 
-  MT.bkt = { DEFAULTS, EPS, validateParams, clampP, posterior, observe, learn, status };
+  MT.bkt = { DEFAULTS, EPS, RUBRIC_GAMMA, validateParams, clampP, posterior, observe, learn, decay, rubricUpdate, status };
   if (typeof module !== 'undefined' && module.exports) module.exports = MT.bkt;
 })(typeof window !== 'undefined' ? window : globalThis);

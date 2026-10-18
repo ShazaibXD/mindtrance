@@ -22,7 +22,7 @@
       for (const c of t.concepts) {
         const st = gs[c.id].status;
         if (st === 'MASTERED') out.mastered++;
-        else if (st === 'NEEDS_VERIFICATION' || st === 'SUSPECTED_GAP') out.verify++;
+        else if (['NEEDS_VERIFICATION', 'SUSPECTED_GAP', 'LEARNING_IN_PROGRESS', 'READY_FOR_REASSESSMENT'].includes(st)) out.verify++;
         else if (st === 'CONFIRMED_GAP') { out.gaps++; out.gapList.push({ track: t, concept: c, p: gs[c.id].p }); }
       }
     }
@@ -38,6 +38,9 @@
     if (a.kind === 'recover') {
       return { title: 'Repair a confirmed gap', body: ui.conceptName(a.trackId, a.conceptId) + ' is a confirmed gap, so related problems stay locked until it is recovered and verified.', cta: '<button class="btn primary" type="button" data-action="recover-concept" data-track="' + esc(a.trackId) + '" data-concept="' + esc(a.conceptId) + '">Start recovery ' + ui.icon('arrow', 16) + '</button>' };
     }
+    if (a.kind === 'review') {
+      return { title: 'Spaced review: ' + ui.conceptName(a.trackId, a.conceptId), body: a.reason === 'escalated' ? 'You stepped back from this earlier. A short refresher now helps it stick.' : 'You verified this a while ago. Estimates drift back without practice, so a quick check keeps it solid.', cta: '<button class="btn primary" type="button" data-action="recover-concept" data-track="' + esc(a.trackId) + '" data-concept="' + esc(a.conceptId) + '">Start the review ' + ui.icon('arrow', 16) + '</button>' };
+    }
     return { title: 'Try: ' + problemTitle(a.trackId, a.problemId), body: 'A new problem you have not attempted yet. Submit your working too: it is part of the evidence.', cta: '<a class="btn primary" href="' + ui.link('workspace', { track: a.trackId, problem: a.problemId }) + '">Open problem ' + ui.icon('arrow', 16) + '</a>' };
   }
 
@@ -50,21 +53,22 @@
     const solved = attempts.filter((e) => e.correct).length;
     const sessions = store.sessionList();
     const na = nextActionCard(store);
+    const due = store.dueReviews();
     const recoveries = sessions.filter((s) => s.gap).slice(0, 4);
     const recent = events.slice(-7).reverse();
     const hasActivity = sessions.length > 0;
 
     const tiles = [
       ['Problems attempted', attempts.length, solved + ' solved', ''],
-      ['Concepts mastered', sum.mastered, 'in tracks you have started', 'mastered'],
-      ['Need verification', sum.verify, 'estimate between 0.45 and 0.80, or suspected', 'verify'],
+      ['Concepts mastered', sum.mastered, 'provisional, with at least two answers on record', 'mastered'],
+      ['Need verification', sum.verify, 'some evidence, or a possible gap', 'verify'],
       ['Confirmed gaps', sum.gaps, 'probe failed, estimate below 0.45', 'gap'],
     ].map((t) => '<div class="card stat"><span class="num ' + t[3] + '-text">' + t[1] + '</span><span class="cap"><strong>' + t[0] + '</strong><br><span class="faint">' + t[2] + '</span></span></div>').join('');
 
     return '<div class="page-head"><div><p class="eyebrow">' + (profile.demo ? 'Judge demo profile' : 'Dashboard') + '</p><h1 id="page-title" class="h1">Welcome, ' + esc(profile.name) + '</h1></div></div>'
       + '<section class="card next" aria-labelledby="next-h"><div><p class="eyebrow">Recommended next action</p><h2 id="next-h">' + esc(na.title) + '</h2><p class="muted">' + esc(na.body) + '</p></div><div>' + na.cta + '</div></section>'
       + '<div class="grid stats" role="list" aria-label="Summary">' + tiles + '</div>'
-      + '<p class="faint small">Starting estimates are assumptions until you answer questions on a concept. Counts cover only tracks you have started.</p>'
+      + '<p class="faint small">Concepts you have not answered anything on are not counted. Estimates are not grades, and they fade back toward the starting assumption if you stop practising.</p>'
       + (hasActivity ? '' : '<div class="empty"><h3>No activity yet</h3><p>Open a problem and submit your answer with working. Every diagnosis, probe and recovery will show up here.</p><div class="row"><a class="btn primary" href="' + ui.link('workspace', { track: 'eee-transformers', problem: 'tx-secondary-current' }) + '">Open the first problem</a></div></div>')
       + '<div class="grid two">'
       + '<section class="card" aria-labelledby="sub-h"><div class="card-head"><h2 id="sub-h">Subject-wise mastery</h2><span class="faint small">Mean estimate per track</span></div><ul class="list-reset subj">'
@@ -73,6 +77,9 @@
       + '<div class="stack">'
       + '<section class="card" aria-labelledby="gap-h"><div class="card-head"><h2 id="gap-h">Confirmed gaps</h2></div>'
       + (sum.gapList.length ? '<ul class="list">' + sum.gapList.map((x) => '<li><span><strong>' + esc(x.concept.name) + '</strong><br><span class="faint small">' + esc(x.track.topic) + ' &middot; estimate ' + ui.f2(x.p) + '</span></span><button class="btn sm" type="button" data-action="recover-concept" data-track="' + esc(x.track.id) + '" data-concept="' + esc(x.concept.id) + '">Recover</button></li>').join('') + '</ul>' : '<p class="muted">None. Gaps appear here only after a probe fails.</p>')
+      + '</section>'
+      + '<section class="card" aria-labelledby="rv-h"><div class="card-head"><h2 id="rv-h">Due for review</h2></div>'
+      + (due.length ? '<ul class="list">' + due.slice(0, 4).map((r) => '<li><span><strong>' + esc(ui.conceptName(r.trackId, r.conceptId)) + '</strong><br><span class="faint small">' + (r.reason === 'escalated' ? 'flagged after stepping back' : 'spaced review') + ' &middot; due ' + ui.ago(r.dueAt) + '</span></span><button class="btn sm" type="button" data-action="recover-concept" data-track="' + esc(r.trackId) + '" data-concept="' + esc(r.conceptId) + '">Review</button></li>').join('') + '</ul>' : '<p class="muted">Nothing is due. Verified concepts come back after about a week, and later each time you pass.</p>')
       + '</section>'
       + '<section class="card" aria-labelledby="rec-h"><div class="card-head"><h2 id="rec-h">Recent recovery sessions</h2></div>'
       + (recoveries.length ? '<ul class="list">' + recoveries.map((s) => '<li><span><strong>' + esc(ui.conceptName(s.trackId, s.gap.conceptId)) + '</strong><br><span class="faint small">' + esc(ui.STATE_LABEL[s.state]) + ' &middot; ' + ui.ago(s.updatedAt) + '</span></span><a class="btn sm" href="' + ui.link('workspace', { session: s.id }) + '">Open</a></li>').join('') + '</ul>' : '<p class="muted">No recovery sessions yet.</p>')

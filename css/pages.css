@@ -53,6 +53,9 @@
 .gv-node .lab { fill: var(--text-2); font: 11px var(--font-ui); }
 .gv-node .pval { fill: var(--text-2); font: 11px var(--font-mono); }
 .gv-node.st-MASTERED { --c: var(--mastered); --bgc: var(--mastered-bg); }
+.gv-node.st-NOT_ASSESSED { --c: var(--text-3); --bgc: var(--elev); }
+.gv-node.st-LEARNING_IN_PROGRESS, .gv-node.st-READY_FOR_REASSESSMENT { --c: var(--sage); --bgc: var(--elev); }
+.gv-node.st-READY_FOR_REASSESSMENT rect { stroke-dasharray: 3 3; }
 .gv-node.st-NEEDS_VERIFICATION { --c: var(--verify); --bgc: var(--verify-bg); }
 .gv-node.st-SUSPECTED_GAP { --c: var(--suspect); --bgc: var(--suspect-bg); }
 .gv-node.st-CONFIRMED_GAP { --c: var(--gap); --bgc: var(--gap-bg); }
