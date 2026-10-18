@@ -6,6 +6,7 @@
 - SVG knowledge gap map, progress analytics, local persistence
 
 ## Next
+- Remaining items from `docs/SPEC_ALIGNMENT.md`: per-criterion rubrics, the verification step check, context-adjusted slip probability, canonical concept slugs, curriculum retrieval, multimodal input, minors' privacy defaults
 - Verify Ask anything against the live Gemini API, tune the prompts, and add a second model-based check of generated content
 - Let teachers review and edit generated maps before students use them
 - Typed and image-based working capture for open-ended answers

@@ -5,7 +5,8 @@ Status labels: **Verified** = exercised end to end in a browser, **Tested** = au
 - **Overall completion:** about 90% of the adapted static-prototype scope. About 50% of the original brief as written (Next.js, FastAPI, Supabase and live AI were deliberately replaced; see `docs/ARCHITECTURE.md`).
 - **Current phase:** Phase 14, final verification
 - **Current task:** documentation and push
-- **Tests passing:** 140 / 140 unit and smoke (`npm test`) and 42 / 42 Playwright end-to-end (`npm run test:e2e`), 0 failing
+- **Tests passing:** 192 / 192 unit and smoke (`npm test`) and 51 / 51 Playwright end-to-end (`npm run test:e2e`), 0 failing
+- **Spec alignment:** see `docs/SPEC_ALIGNMENT.md`
 - **Latest commit before this file was updated:** `d569cd1`
 - **Blockers:** none for the prototype. Live Gemini testing needs an API key. Real auth and database need a Supabase project.
 - **Next recommended task:** a Supabase-backed store behind the same interface, then Firefox and WebKit e2e projects.
@@ -32,6 +33,10 @@ Status labels: **Verified** = exercised end to end in a browser, **Tested** = au
 | Optional Gemini classification | Tested with mocks only. **Not verified against the live API.** |
 | Ask anything: map from any question, open-ended answer judging, follow-up question, concept-targeted fresh question | Tested (unit and e2e) with mocked Gemini; the keyless demo fixture is Verified end-to-end. **Live Gemini output quality is unverified** |
 | Judge demo mode | Verified in browser |
+| Spec outcome taxonomy, composite evidence score, two-probe ceiling, escalation, recovery cap | Tested and verified end-to-end in Chrome |
+| Learning modes, hints, explanations, reasoning check, clarification | Tested and verified end-to-end in Chrome |
+| Learner model: evidence-based statuses, decay, rubric track, spaced review | Tested (unit); dashboard review card tested in the browser only indirectly |
+| AI contract: evidence quotes, safety layer, adapters | Tested with mocked model replies only |
 
 ## Phases
 
@@ -64,6 +69,7 @@ Status labels: **Verified** = exercised end to end in a browser, **Tested** = au
 - A wrong practice answer after a lesson lowers the estimate sharply, which is what the model says with a 0.10 slip rate but may feel harsh.
 - Verification credits the target concept as well as the recovered one, so a target can reach mastered through verification without the original being re-solved.
 - Only tested in Chrome. No Firefox or Safari runs yet.
+- Several spec items are not implemented (backend, database, retrieval, code sandbox, multimodal input, minors' privacy, hinglish handling). See `docs/SPEC_ALIGNMENT.md`.
 - Maps for new questions need a Gemini key and are AI-written, validated for structure but not for factual accuracy.
 - Open-ended answers are judged by AI, so correctness there is a judgement, not a verified result. Fresh verification questions on custom maps are multiple choice and graded deterministically, but their correct answers also come from the model.
 - The demo rubric is a handful of keyword rules for one question.

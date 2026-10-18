@@ -34,6 +34,19 @@ Prompted by the recommendation to support non-STEM subjects and open-ended answe
 - A scripted history fixture and keyword rubric make the loop demonstrable without a key and are labelled as not AI.
 - Playwright's `page.route` is used to mock the Google endpoint, so the real client code (headers, schema, validation, error handling) is exercised in the browser without network access or a key.
 
+## Fourth pass: aligning with the universal-diagnostic specification
+
+The user attached a platform-sized specification. After asking, the chosen scope was to align the browser app, not to build the server stack. Decisions worth recording:
+
+- **Evidence over ritual.** The old rule "always probe before confirming" was replaced by the spec's tiers. This changed the demo: a bare wrong answer now needs a probe, but an answer with the working shown is confirmed directly. The demo has two buttons to show both.
+- **Outcomes by policy kind.** Behavior depends on `OUTCOMES[x].kind` (gap, slip, ambiguous...) rather than on label strings, so a new outcome only needs a row in the table.
+- **Display status is not lock status.** Adding "learning in progress" would have lifted the lock on the original problem mid-recovery. The lock uses the underlying gap check, with a test.
+- **A weak essay is not a confirmed miss.** Rubric scores below 0.5 are recorded but do not set the failure count, otherwise the target concept itself became "confirmed gap" and hid the blocked-by-prerequisite state.
+- **Hints do not teach.** The spec applies a 0.10 learning transition after a hint. That would raise mastery with no evidence, so it is not applied. Documented in the alignment file.
+- **Grounded evidence.** A model diagnosis is thrown away if its quoted evidence is not in the student's own text. A bare answer caps confidence at 0.5 regardless of the model.
+- **Honesty about verifiers.** The adapter table marks seven of nine adapters as having no real deterministic verifier in the browser.
+- A Python patch with an unescaped quote silently applied nothing once; and a second patch deleted a shared helper. Both were caught by the test suite within a minute, which is the argument for keeping the suites fast.
+
 ## Not done
 
 Real auth, database, live Gemini verification of any of the three AI paths, KaTeX, cross-browser runs. See `docs/ROADMAP.md`.

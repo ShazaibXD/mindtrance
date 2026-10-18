@@ -32,16 +32,16 @@
       + '<section class="hero container"><div class="hero-copy">'
       + '<p class="eyebrow">AI-assisted learning diagnostics</p>'
       + '<h1 id="page-title" class="display">Find the gap.<br>Fix the foundation.</h1>'
-      + '<p class="lead">When a student gets a problem wrong, MINDTRACE asks why. It separates a careless slip from a missing prerequisite, tests the suspected cause with a short probe, and only then teaches the concept that is actually missing.</p>'
+      + '<p class="lead">When a student gets a problem wrong, MINDTRACE asks why. It separates a slip from a missing prerequisite, tests the suspected cause with a short probe, and only then teaches the concept that is actually missing.</p>'
       + '<div class="row"><button class="btn primary lg" type="button" data-action="start-demo">Try the judge demo</button><a class="btn lg" href="#/" data-scroll="how">See how it works</a></div>'
       + '<p class="faint small">Runs entirely in your browser. No account, no server, no API key needed.</p></div>'
       + '<figure class="hero-fig"><figcaption class="eyebrow">Example: a transformer numerical that went wrong</figcaption>'
       + MT.GraphView.html(track, illustration(track), { compact: true, key: 'landing', selected: 'turns_ratio' })
       + '<p class="faint small">Illustration with hand-set values. The student fails a probe on turns ratio, so the target problem is blocked until that concept is recovered and re-verified.</p></figure></section>'
 
-      + '<section class="section container" aria-labelledby="h-slip"><h2 id="h-slip" class="h2">A wrong answer is not always a weak concept</h2>'
+      + '<section class="section container" aria-labelledby="h-slip"><h2 id="h-slip" class="h2">A wrong answer does not always mean a gap in the concept</h2>'
       + '<div class="cols3">'
-      + '<article class="card"><span class="badge verify">Careless slip</span><h3>The method is right</h3><p class="muted">The setup is sound and a late arithmetic or copying step failed. MINDTRACE asks for a retry and does not lower mastery.</p></article>'
+      + '<article class="card"><span class="badge verify">Slip</span><h3>The method is right</h3><p class="muted">The setup is sound and a late arithmetic or copying step failed. MINDTRACE asks for a retry and does not lower mastery.</p></article>'
       + '<article class="card"><span class="badge verify">Unit error</span><h3>A prefix was missed</h3><p class="muted">The answer is off by a power of ten on a problem with units. One is a slip; a repeat triggers a probe on unit conversion.</p></article>'
       + '<article class="card"><span class="badge gap">Prerequisite gap</span><h3>The cause is upstream</h3><p class="muted">The error pattern points to a concept the problem depends on. A probe confirms or rejects it before anything is taught.</p></article>'
       + '</div></section>'
@@ -66,7 +66,7 @@
       + '<li><strong>Transparent mastery estimates.</strong> Bayesian Knowledge Tracing with observations and learning kept separate. Estimates are not calibrated measurements.</li>'
       + '<li><strong>Safe answer checking.</strong> Numbers, units and algebraic expressions are parsed without eval and compared numerically.</li>'
       + '<li><strong>Fresh verification.</strong> Generated problems with new numbers, graded the same way as the original.</li>'
-      + '<li><strong>Progress analytics.</strong> Mastery over time, recovery success, repeated misconceptions and weakest prerequisites.</li>'
+      + '<li><strong>Progress analytics.</strong> Mastery over time, recovery success, repeated misconceptions and the concepts worth strengthening next.</li>'
       + '<li><strong>Ask anything.</strong> Type any question from any subject. With your own Gemini key, MINDTRACE builds a prerequisite map for it, judges your open-ended answer, asks a follow-up when it is unsure, and verifies learning with a fresh question. A scripted demo question works without a key.</li>'
       + '<li><strong>Judge demo.</strong> A guided run of the whole loop with the fixture clearly labelled.</li></ul></section>'
 

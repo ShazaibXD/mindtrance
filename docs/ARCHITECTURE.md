@@ -19,7 +19,7 @@ The original brief asked for Next.js, FastAPI, Supabase and Gemini. For this hac
 ## Layers
 
 ```
-js/core    pure logic, no DOM, runs in Node for tests
+js/core    pure logic, no DOM, runs in Node (adapters.js and safety.js are new) for tests
   bkt.js       Bayesian Knowledge Tracing
   expr.js      safe number/unit/expression parsing and checking
   graph.js     prerequisite DAG validation, traversal, suspect ranking, layout
@@ -87,3 +87,12 @@ The three priorities from the product brief and how each is met:
 Answer kinds: `number` and `expr` (deterministic), `choice` (deterministic, used for fresh questions on custom maps), `open` (needs a judgement from Gemini or the demo rubric; the result carries `engine` and is labelled in the UI).
 
 The demo fixture is a hand-written map and a keyword rubric for one history question. It exists so the whole loop can be shown without a key, and is labelled as scripted wherever it appears.
+
+## Diagnosis policy (spec alignment)
+
+1. **Classify.** `MT.diagnose.classify` returns an outcome (one of 11, see `OUTCOMES`) plus a list of weighted evidence items.
+2. **Score.** `S_E = 1 - product(1 - w * r)`. Tiers: below 0.45 insufficient, 0.45 to 0.75 suspected, 0.75 or more confirmed.
+3. **Route** (`flow.settle`): slips and language difficulty retry with no mastery change; confirmed gaps go straight to recovery; everything else gets at most two probes; two probes without a cause, or two failed recoveries, escalate to a worked solution and schedule spaced reviews.
+4. **Update.** BKT observations use format-adjusted guess rates. The recovery lesson applies P(T) = 0.30 once. Open-ended answers on rubric-type subjects update the rubric accumulator instead. Estimates decay toward the prior with a half-life that doubles on each spaced verification.
+
+Other session paths: `DIRECT_EXPLANATION` (explain and teach-from-basics, no questions first), `REASONING_CHECK` (right answer, no reasoning shown). See `docs/SPEC_ALIGNMENT.md` for the full mapping.
