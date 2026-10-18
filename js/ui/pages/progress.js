@@ -36,6 +36,7 @@
     }).join('');
 
     return '<div class="page-head"><div><p class="eyebrow">Progress and analytics</p><h1 id="page-title" class="h1">How your understanding is changing</h1></div></div>'
+      + ui.intro('progress', 'What these charts show', '<p class="muted">Every chart is built from your own answers in this browser. The first shows your average estimate moving as you answer and learn. The others show which attempts were right and which mistakes keep coming back.</p>')
       + '<div class="notice info">' + ui.icon('info') + '<p class="small"><strong>These are estimates, not grades.</strong> Mastery uses Bayesian Knowledge Tracing with fixed parameters (slip 0.10, guess 0.20, learning 0.25) that have not been calibrated on real student data. With only a few answers per concept, a single result can move an estimate a lot.</p></div>'
       + '<section class="card" aria-labelledby="mo-h"><div class="card-head"><h2 id="mo-h">Mastery over time</h2><span class="faint small">Mean across concepts touched</span></div>' + moChart + '</section>'
       + '<section class="card" aria-labelledby="at-h"><div class="card-head"><h2 id="at-h">Attempts and correctness</h2><span class="faint small">' + attempts.length + ' attempt' + (attempts.length === 1 ? '' : 's') + '</span></div>' + attChart + '</section>'

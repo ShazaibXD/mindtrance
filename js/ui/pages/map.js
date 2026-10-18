@@ -38,7 +38,7 @@
       + '<div class="row between"><h2 id="det-h" class="h3">' + esc(c.name) + '</h2>' + ui.statusBadge(st.status) + '</div>'
       + '<p class="muted">' + fmt(c.desc) + '</p>'
       + '<div><div class="row between small"><span class="label">Mastery estimate</span><span class="mono">' + ui.f2(st.p) + '</span></div>' + ui.meter(st.p, meta.cls)
-      + '<p class="hint">' + esc(meta.help) + ' ' + (rec.obs ? rec.obs + ' observation' + (rec.obs > 1 ? 's' : '') + ', ' + rec.fails + ' missed.' : 'No evidence yet: this is a starting assumption.') + (rec.W > 0 ? ' Rubric-scored, uncertainty ' + ui.f2(1 / (1 + rec.W)) + ' (it shrinks as evidence builds).' : '') + '</p></div>'
+      + '<p class="hint">' + esc(meta.help) + (rec.obs ? ' ' + rec.obs + ' observation' + (rec.obs > 1 ? 's' : '') + ', ' + rec.fails + ' missed.' : '') + (rec.W > 0 ? ' Rubric-scored, uncertainty ' + ui.f2(1 / (1 + rec.W)) + ' (it shrinks as evidence builds).' : '') + '</p></div>'
       + action
       + '<div><p class="label">Prerequisites</p>' + (parents.length ? '<ul class="list small">' + parents.map((p) => row(p.id, p.why, p.weight, 'up', p)).join('') + '</ul>' : '<p class="muted small">Foundational: nothing upstream.</p>') + '</div>'
       + '<div><p class="label">Needed for</p>' + (kids.length ? '<ul class="list small">' + kids.map((k) => row(k.id, k.why, k.weight, 'down', k)).join('') + '</ul>' : '<p class="muted small">This is the target concept of the track.</p>') + '</div>'
@@ -56,12 +56,14 @@
     const legend = Object.entries(ui.STATUS).map(([k, m]) => '<li>' + ui.badge(m.cls, m.label, true) + '<span class="small faint">' + esc(m.help) + '</span></li>').join('');
     const table = '<table class="tbl"><caption class="sr-only">Concepts in this track</caption><thead><tr><th>Concept</th><th>Level</th><th>Status</th><th>Estimate</th></tr></thead><tbody>'
       + track.concepts.slice().sort((a, b) => a.level - b.level).map((c) => '<tr><td><button class="linkbtn" type="button" data-action="map-select" data-concept="' + esc(c.id) + '">' + esc(c.name) + '</button></td><td>' + ['', 'Foundational', 'Intermediate', 'Target'][c.level] + '</td><td>' + esc(ui.STATUS[states[c.id].status].label) + '</td><td class="mono">' + ui.f2(states[c.id].p) + '</td></tr>').join('') + '</tbody></table>';
+    const key = ['MASTERED', 'NEEDS_VERIFICATION', 'CONFIRMED_GAP', 'BLOCKED', 'NOT_ASSESSED'].map((k) => '<li>' + ui.badge(ui.STATUS[k].cls, ui.STATUS[k].short, true) + '</li>').join('');
     return '<div class="page-head"><div><p class="eyebrow">Knowledge gap map</p><h1 id="page-title" class="h1">' + esc(track.topic) + '</h1></div>'
       + '<div class="field" style="min-width:240px"><label for="map-track">Topic</label><select class="select" id="map-track" data-change="map-track">' + opts + '</select></div></div>'
       + '<div class="mapgrid"><div class="stack" style="--gap-y:12px">'
-      + '<div class="card flat" style="padding:12px 16px"><div class="row between"><span class="small muted">Drag to pan, Ctrl or Cmd with the wheel to zoom, Tab to move between concepts. <span class="legend-line up"></span> upstream <span class="legend-line down"></span> downstream</span></div></div>'
+      + '<div class="card flat maphint"><ul class="list-reset keyrow" aria-label="Colour key">' + key + '</ul></div>'
       + MT.GraphView.html(track, states, { selected, key: 'map-' + track.id })
-      + '<details><summary class="small muted">Status legend</summary><ul class="list-reset legend">' + legend + '</ul></details>'
+      + '<div class="card flat maphint"><p class="small muted"><strong>How to read it:</strong> each box is one concept, and an arrow means "needed before". Click a box for details and a fix. A confirmed gap blocks everything below it. Drag to pan, Ctrl or Cmd with the wheel to zoom. <a href="#/app/guide">Full guide</a></p></div>'
+      + '<details><summary class="small muted">Every status explained</summary><ul class="list-reset legend">' + legend + '</ul></details>'
       + '<details><summary class="small muted">Concept list (accessible alternative to the graph)</summary>' + table + '</details></div>'
       + details(track, selected, states) + '</div>';
   }

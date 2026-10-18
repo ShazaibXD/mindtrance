@@ -74,7 +74,7 @@ There are no required environment variables and no `.env` files. The optional Ge
 ```bash
 npm test               # 205 unit and smoke tests, no install needed
 npm install            # once, for Playwright
-npm run test:e2e       # 63 browser tests driving the real UI
+npm run test:e2e       # 65 browser tests driving the real UI
 ```
 
 The unit suite covers the engine, content, state machine, store, flow, analytics, UI helpers, graph rendering and three headless-Chrome smoke tests (skipped when Chrome is not installed; set `CHROME_BIN` to point at a browser). The e2e suite clicks through the whole student journey. See `docs/TESTING.md`.
@@ -97,6 +97,8 @@ Click **Judge demo** on the landing page. A guided tour walks one student's wron
 - A nine-step labelled progress bar shows where you are, and **Hide tour** puts it away at any time.
 
 The nine steps: meet the student, submit, why it asks a question first, the cause is confirmed, a short lesson, one practice question, a fresh problem, verified, retry the original. At the end, **Replay with the working shown** runs the strong-evidence path, where the student's own steps confirm the cause and no question is needed.
+
+Outside the demo, a new profile gets a four-step "start here" card on the dashboard, every main page has a short dismissible "what this page shows" card (a small link brings it back), the map has a visible colour key, and a **How it works** page explains the loop, every status colour and every word the app uses.
 
 The demo also hides the seven learning-mode buttons behind "Other ways to get help" so the next step stands out. The wrong attempt is a pre-written fixture; the diagnosis, numbers and graph are computed live, and nothing in the demo is AI-generated. **Restart the demo** from the tour or use "Reset demo data".
 

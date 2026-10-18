@@ -80,6 +80,15 @@ Feedback on the deployed tour was that it "still looks the same": a small panel 
 - **Placeholders:** the right pane says "Waiting for the student" before a submission and "The diagnosis is done" once the card has served its purpose, so it never contradicts the caption.
 - Non-demo workspace pages are unchanged. Checked at phone width with no horizontal overflow; 205 unit and 63 browser tests pass.
 
+## Orientation pass: self-explanatory outside the demo
+
+The demo explained itself, but everything else assumed the visitor already knew the vocabulary. An audit of each screen found: a dashboard of four zeros, a map whose legend was hidden in a collapsed section, a duplicated "starting assumption" sentence, and no place that defined "gap", "probe", "evidence score" or the colours.
+
+- **First-run card** on the dashboard (four steps) for profiles with no activity; it replaces the old empty box and avoids a second "open problem" button.
+- **`ui.intro`**: a short, dismissible "what this page shows" card on Dashboard, Ask, Progress and Explorer. Dismissal is remembered in the browser; a "What is this page?" link restores it.
+- **Map:** a visible colour key above the graph and a "how to read it" line below it. A larger intro pushed the graph off the first screen and broke the pan and zoom tests, which was a fair verdict on the design, so the explanation is a single line.
+- **How it works page** (`js/ui/pages/guide.js`): the five-step loop, every status with its colour and meaning, a nine-term glossary, and what is real.
+
 ## Not done
 
 Real auth, database, live Gemini verification of any of the three AI paths, KaTeX, cross-browser runs. See `docs/ROADMAP.md`.

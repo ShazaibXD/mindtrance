@@ -2,7 +2,7 @@
 
 ```bash
 npm test             # unit and smoke tests: node --test tests/*.test.js (205 tests, no install)
-npm run test:e2e     # Playwright browser tests (63 tests)
+npm run test:e2e     # Playwright browser tests (65 tests)
 ```
 
 Unit tests need Node 20 or newer and nothing else. The e2e suite needs `npm install` once and uses the Google Chrome already on the machine (`channel: 'chrome'`), so no browser is downloaded. To use Playwright's own Chromium instead: `npx playwright install chromium` then `E2E_CHANNEL=chromium npm run test:e2e`. The suite starts its own dependency-free static server on port 4174.
@@ -41,6 +41,7 @@ Unit tests need Node 20 or newer and nothing else. The e2e suite needs `npm inst
 | `modes` | Hints, explain and teach-from-basics, the reasoning check, dotted uncertain edges, clarification before any request is sent |
 | `motion` | Motion enabled: smooth scroll, split-text with a correct accessible label, Vanta canvas mounts and is released off screen, scroll reveals, theme switch re-colours the network, no WebGL fallback, the full diagnostic loop while pages animate, entrance animations leave nodes opaque and edges undashed, graph zoom not hijacked. Reduced motion: nothing animates and everything is visible. The rest of the suite runs with `reducedMotion: 'reduce'` so animations cannot cause flakiness |
 | `tour` | A first-time visitor finishes all nine steps using only the tour's own buttons and text, the tour can be hidden and shown, the working-shown path skips the question, the seven modes are tucked away during the demo but not on other problems, and a normal profile never sees the tour |
+| `guide` | A new profile sees the four first-run steps; the How it works page lists the words and status legend; a page intro can be hidden, stays hidden after reload, and can be brought back; the map shows a colour key and keeps the graph in the first screen |
 | `mobile` | 375px width: no horizontal overflow on any page, navigation drawer, the loop works with touch |
 
 The generated verification answer is read from app state (`MT.flow.verificationProblem`), because a test cannot guess random numbers. Everything else is done through the UI.

@@ -31,6 +31,7 @@
       : '<p class="muted">Nothing yet. Questions you ask appear here, with their own map and progress.</p>';
 
     return '<div class="page-head"><div><p class="eyebrow">Ask anything</p><h1 id="page-title" class="h1">Start from any question</h1></div></div>'
+      + ui.intro('ask', 'How asking works', '<p class="muted">Type any question from any subject. MINDTRACE splits it into the ideas you need to understand it, then asks you to answer in your own words so it can see what is missing.</p>', { steps: ['Write or pick a question.', 'Answer it. A rough answer is fine.', 'If something is missing, you get one follow-up question, then a short lesson and a fresh question to check it stuck.'] })
       + '<section class="card stack" aria-labelledby="ask-h"><h2 id="ask-h" class="h3">Your question</h2>'
       + '<p class="muted">No subject to pick. MINDTRACE breaks the question into a small prerequisite map, you attempt an answer in your own words, and it diagnoses what is missing before it teaches anything.</p>'
       + (hasKey ? '' : '<div class="notice warn" role="status">' + ui.icon('info') + '<div><strong>Building a map for a new question needs a Gemini key.</strong><p class="small">Add your own in <a href="' + ui.link('settings') + '">Settings</a>. Or try the demo question below, which is a scripted fixture and needs no key.</p></div></div>')

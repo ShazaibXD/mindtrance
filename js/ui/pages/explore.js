@@ -24,6 +24,7 @@
         }).join('') : '<div class="empty"><p>No tracks yet for this domain.</p></div>') + '</section>';
     }).join('');
     return '<div class="page-head"><div><p class="eyebrow">Question and domain explorer</p><h1 id="page-title" class="h1">Browse the tracks</h1></div></div>'
+      + ui.intro('explore', 'What you can open here', '<p class="muted">Every topic MINDTRACE knows, grouped by exam or subject. Open a problem to try it, or open its Gap map to see the concepts behind it. The badge on a problem shows where you stand on its target concept.</p>')
       + '<div class="chips" role="group" aria-label="Filter by domain">' + chips + '</div>' + domains
       + '<p class="faint small">Each track is a data file: concepts, prerequisite edges, problems with error signatures, and verification generators. Adding a new one does not touch the engine. See docs/ARCHITECTURE.md.</p>';
   }

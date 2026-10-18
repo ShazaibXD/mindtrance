@@ -45,7 +45,7 @@ test('a new profile starts with honest empty states, not sample data', async ({ 
   await page.getByRole('tab', { name: 'Create profile' }).click();
   await page.getByLabel('Display name').fill('Newcomer');
   await page.getByRole('button', { name: 'Create profile and start' }).click();
-  await expect(page.getByText('No activity yet')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Four steps, about three minutes' })).toBeVisible();
   await expect(page.locator('.stat .num').first()).toHaveText('0');
   await page.getByRole('link', { name: 'Progress' }).click();
   await expect(page.getByText('No estimate updates yet')).toBeVisible();

@@ -66,10 +66,10 @@
     ].map((t) => '<div class="card stat"><span class="num ' + t[3] + '-text" data-count="' + t[1] + '">' + t[1] + '</span><span class="cap"><strong>' + t[0] + '</strong><br><span class="faint">' + t[2] + '</span></span></div>').join('');
 
     return '<div class="page-head"><div><p class="eyebrow">' + (profile.demo ? 'Judge demo profile' : 'Dashboard') + '</p><h1 id="page-title" class="h1">Welcome, ' + esc(profile.name) + '</h1></div></div>'
+      + (hasActivity ? ui.intro('dashboard', 'What this page shows', '<p class="muted">Your next best step is at the top. The four numbers count concepts you have actually answered on. Below them, each topic shows how well you know it, which concepts are confirmed gaps, and what is due for review.</p>') : ui.firstRun())
       + '<section class="card next" aria-labelledby="next-h"><div><p class="eyebrow">Recommended next action</p><h2 id="next-h">' + esc(na.title) + '</h2><p class="muted">' + esc(na.body) + '</p></div><div>' + na.cta + '</div></section>'
       + '<div class="grid stats" role="list" aria-label="Summary">' + tiles + '</div>'
       + '<p class="faint small">Concepts you have not answered anything on are not counted. Estimates are not grades, and they fade back toward the starting assumption if you stop practising.</p>'
-      + (hasActivity ? '' : '<div class="empty"><h3>No activity yet</h3><p>Open a problem and submit your answer with working. Every diagnosis, probe and recovery will show up here.</p><div class="row"><a class="btn primary" href="' + ui.link('workspace', { track: 'eee-transformers', problem: 'tx-secondary-current' }) + '">Open the first problem</a></div></div>')
       + '<div class="grid two">'
       + '<section class="card" aria-labelledby="sub-h"><div class="card-head"><h2 id="sub-h">Subject-wise mastery</h2><span class="faint small">Mean estimate per track</span></div><ul class="list-reset subj">'
       + sum.tracks.map((r) => '<li><div class="row between"><span><strong>' + esc(r.track.topic) + '</strong><br><span class="faint small">' + esc(MT.data.domains.find((d) => d.id === r.track.domainId).name) + '</span></span><span class="mono ' + (r.started ? '' : 'faint') + '">' + (r.started ? ui.f2(r.avg) : 'not started') + '</span></div>' + ui.meter(r.avg, r.started ? (r.avg >= 0.8 ? 'mastered' : r.avg >= 0.45 ? 'verify' : 'gap') : 'idle') + '</li>').join('')

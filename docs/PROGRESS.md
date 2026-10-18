@@ -5,7 +5,7 @@ Status labels: **Verified** = exercised end to end in a browser, **Tested** = au
 - **Overall completion:** about 90% of the adapted static-prototype scope. About 50% of the original brief as written (Next.js, FastAPI, Supabase and live AI were deliberately replaced; see `docs/ARCHITECTURE.md`).
 - **Current phase:** Phase 14, final verification
 - **Current task:** documentation and push
-- **Tests passing:** 205 / 205 unit and smoke (`npm test`) and 63 / 63 Playwright end-to-end (`npm run test:e2e`), 0 failing
+- **Tests passing:** 205 / 205 unit and smoke (`npm test`) and 65 / 65 Playwright end-to-end (`npm run test:e2e`), 0 failing
 - **Spec alignment:** see `docs/SPEC_ALIGNMENT.md`
 - **Latest commit before this file was updated:** `d569cd1`
 - **Blockers:** none for the prototype. Live Gemini testing needs an API key. Real auth and database need a Supabase project.
@@ -32,6 +32,7 @@ Status labels: **Verified** = exercised end to end in a browser, **Tested** = au
 | Opens from `file://` | Verified in headless Chrome (smoke test) |
 | Optional Gemini classification | Tested with mocks only. **Not verified against the live API.** |
 | Ask anything: map from any question, open-ended answer judging, follow-up question, concept-targeted fresh question | Tested (unit and e2e) with mocked Gemini; the keyless demo fixture is Verified end-to-end. **Live Gemini output quality is unverified** |
+| Orientation outside the demo: first-run steps, dismissible page intros, visible map key, How it works guide page (loop, status legend, glossary) | Tested (e2e) and reviewed visually on desktop and phone |
 | Judge demo mode: split-pane layout (student view and system view), labelled nine-step tour, plain-words captions, belief list, event log, highlighted next control and shortcuts | Tested (unit and e2e, including a full run by a first-time-visitor script) and reviewed visually on desktop and phone |
 | Visual redesign and motion (Lenis, GSAP, Vanta) | Verified visually in Chrome (dark, light, phone) and by 7 browser tests; screenshots reviewed by hand |
 | Spec outcome taxonomy, composite evidence score, two-probe ceiling, escalation, recovery cap | Tested and verified end-to-end in Chrome |
